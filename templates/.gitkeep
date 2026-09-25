@@ -1,0 +1,5 @@
+<!-- CitySense global templates directory.
+     Palak owns this directory.
+     Place base.html and layout templates here.
+     App-specific templates belong in <app>/templates/<app>/ subdirectories.
+-->

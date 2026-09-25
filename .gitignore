@@ -12,10 +12,13 @@ env/
 db.sqlite3
 *.log
 
-# Environment variables
+# Collected static files (generated — do not commit)
+staticfiles/
+
+# Environment variables — NEVER commit
 .env
 
-# Uploaded media
+# Uploaded media files
 media/
 
 # IDE
@@ -26,7 +29,7 @@ media/
 .DS_Store
 Thumbs.db
 
-# Coverage
+# Coverage / testing
 .coverage
 htmlcov/
 .pytest_cache/

@@ -1,0 +1,7 @@
+/* CitySense static files directory.
+   Palak owns CSS and JS files here.
+   Place global.css, app.js, etc. in subdirectories:
+     static/css/
+     static/js/
+     static/images/
+*/
