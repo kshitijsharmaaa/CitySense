@@ -147,6 +147,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
+# CUSTOM USER MODEL
+# Must be set before any migrations are created.
+# ---------------------------------------------------------------------------
+AUTH_USER_MODEL = "accounts.CitySenseUser"
+
+# ---------------------------------------------------------------------------
 # AI CONFIGURATION (read from env — never hardcode)
 # ---------------------------------------------------------------------------
 AI_API_KEY = config("AI_API_KEY", default="")
