@@ -1,0 +1,491 @@
+/* ==========================================================================
+   CitySense - Civic Tech Design System (Phase 1 Foundation)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design Tokens & CSS Variables
+   -------------------------------------------------------------------------- */
+:root {
+  /* Brand Colors */
+  --cs-primary: #1e3a8a;       /* Deep Civic Navy */
+  --cs-primary-hover: #1e40af;
+  --cs-accent: #0284c7;        /* Tech Blue */
+  --cs-accent-light: #e0f2fe;
+
+  /* Neutral Spectrum */
+  --cs-bg-main: #f8fafc;       /* Clean Off-White Page Background */
+  --cs-bg-card: #ffffff;       /* Pure White Card Surfaces */
+  --cs-bg-alt: #f1f5f9;        /* Slate Light Subtle Background */
+  --cs-border: #e2e8f0;        /* Subtle Border Gray */
+  --cs-border-dark: #cbd5e1;
+  
+  /* Typography Colors */
+  --cs-text-heading: #0f172a;  /* High contrast Charcoal */
+  --cs-text-body: #334155;     /* Readable Muted Body */
+  --cs-text-muted: #64748b;    /* Light Muted Text */
+  --cs-text-light: #94a3b8;
+
+  /* Status Colors (From Specification) */
+  --cs-status-reported: #475569;   /* Slate Gray */
+  --cs-status-verified: #0284c7;   /* Info Sky Blue */
+  --cs-status-assigned: #4f46e5;   /* Indigo */
+  --cs-status-in-progress: #d97706;/* Amber/Orange */
+  --cs-status-resolved: #16a34a;   /* Emerald Green */
+  --cs-status-rejected: #dc2626;   /* Crimson Red */
+
+  /* Priority Colors (From Specification) */
+  --cs-priority-low: #64748b;      /* Muted Gray */
+  --cs-priority-medium: #2563eb;   /* Standard Blue */
+  --cs-priority-high: #ea580c;     /* Alert Orange */
+  --cs-priority-critical: #b91c1c; /* Urgent Crimson */
+
+  /* Shadows & Radius */
+  --cs-radius-sm: 6px;
+  --cs-radius-md: 10px;
+  --cs-radius-lg: 16px;
+  --cs-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
+  --cs-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --cs-shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   2. Base & Typography
+   -------------------------------------------------------------------------- */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--cs-bg-main);
+  color: var(--cs-text-body);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--cs-text-heading);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.text-muted-cs {
+  color: var(--cs-text-muted) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Global Navigation Component (navbar.html)
+   -------------------------------------------------------------------------- */
+.cs-navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--cs-border);
+  box-shadow: var(--cs-shadow-sm);
+  padding: 0.85rem 0;
+}
+
+.cs-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: var(--cs-primary);
+  text-decoration: none;
+}
+
+.cs-brand-icon {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-accent) 100%);
+  color: white;
+  border-radius: var(--cs-radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25);
+}
+
+.cs-nav-link {
+  font-weight: 500;
+  color: var(--cs-text-body);
+  padding: 0.5rem 0.85rem !important;
+  border-radius: var(--cs-radius-sm);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.cs-nav-link:hover, .cs-nav-link.active {
+  color: var(--cs-primary) !important;
+  background-color: var(--cs-bg-alt);
+}
+
+/* --------------------------------------------------------------------------
+   4. Reusable Buttons System
+   -------------------------------------------------------------------------- */
+.btn-cs-primary {
+  background-color: var(--cs-primary);
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid transparent;
+  padding: 0.6rem 1.35rem;
+  border-radius: var(--cs-radius-sm);
+  transition: all 0.2s ease;
+  box-shadow: var(--cs-shadow-sm);
+}
+
+.btn-cs-primary:hover, .btn-cs-primary:focus {
+  background-color: var(--cs-primary-hover);
+  color: #ffffff;
+  box-shadow: var(--cs-shadow-md);
+}
+
+.btn-cs-secondary {
+  background-color: var(--cs-bg-card);
+  color: var(--cs-text-heading);
+  font-weight: 600;
+  border: 1px solid var(--cs-border-dark);
+  padding: 0.6rem 1.35rem;
+  border-radius: var(--cs-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-cs-secondary:hover {
+  background-color: var(--cs-bg-alt);
+  color: var(--cs-primary);
+  border-color: var(--cs-primary);
+}
+
+.btn-cs-accent {
+  background-color: var(--cs-accent);
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid transparent;
+  padding: 0.6rem 1.35rem;
+  border-radius: var(--cs-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-cs-accent:hover {
+  background-color: #0369a1;
+  color: #ffffff;
+}
+
+.btn-cs-outline {
+  background-color: transparent;
+  color: var(--cs-primary);
+  border: 1.5px solid var(--cs-primary);
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: var(--cs-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-cs-outline:hover {
+  background-color: var(--cs-primary);
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   5. Reusable Status & Priority Badges (status_badge.html & priority_badge.html)
+   -------------------------------------------------------------------------- */
+.cs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.65rem;
+  border-radius: 50rem;
+  line-height: 1;
+}
+
+/* Status Variations */
+.badge-status-reported {
+  background-color: #f1f5f9;
+  color: var(--cs-status-reported);
+  border: 1px solid #cbd5e1;
+}
+
+.badge-status-verified {
+  background-color: #e0f2fe;
+  color: var(--cs-status-verified);
+  border: 1px solid #bae6fd;
+}
+
+.badge-status-assigned {
+  background-color: #e0e7ff;
+  color: var(--cs-status-assigned);
+  border: 1px solid #c7d2fe;
+}
+
+.badge-status-in_progress {
+  background-color: #fef3c7;
+  color: var(--cs-status-in-progress);
+  border: 1px solid #fde68a;
+}
+
+.badge-status-resolved {
+  background-color: #dcfce7;
+  color: var(--cs-status-resolved);
+  border: 1px solid #bbf7d0;
+}
+
+.badge-status-rejected {
+  background-color: #fee2e2;
+  color: var(--cs-status-rejected);
+  border: 1px solid #fecaca;
+}
+
+/* Priority Variations */
+.badge-priority-low {
+  background-color: #f1f5f9;
+  color: var(--cs-priority-low);
+  border: 1px solid #cbd5e1;
+}
+
+.badge-priority-medium {
+  background-color: #eff6ff;
+  color: var(--cs-priority-medium);
+  border: 1px solid #bfdbfe;
+}
+
+.badge-priority-high {
+  background-color: #ffedd5;
+  color: var(--cs-priority-high);
+  border: 1px solid #fed7aa;
+}
+
+.badge-priority-critical {
+  background-color: #fef2f2;
+  color: var(--cs-priority-critical);
+  border: 1px solid #fecaca;
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(185, 28, 28, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0); }
+}
+
+/* --------------------------------------------------------------------------
+   6. Reusable Card Component (card.html)
+   -------------------------------------------------------------------------- */
+.cs-card {
+  background-color: var(--cs-bg-card);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-md);
+  box-shadow: var(--cs-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cs-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--cs-shadow-md);
+  border-color: var(--cs-border-dark);
+}
+
+.cs-card-header {
+  padding: 1rem 1.25rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: transparent;
+  border-bottom: none;
+}
+
+.cs-card-body {
+  padding: 0.75rem 1.25rem 1.25rem;
+  flex: 1 1 auto;
+}
+
+.cs-card-footer {
+  padding: 0.85rem 1.25rem;
+  background-color: var(--cs-bg-alt);
+  border-top: 1px solid var(--cs-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.cs-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--cs-text-heading);
+}
+
+.cs-card-desc {
+  font-size: 0.9rem;
+  color: var(--cs-text-body);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   7. Reusable Alert Component (alert.html)
+   -------------------------------------------------------------------------- */
+.cs-alert {
+  border-radius: var(--cs-radius-md);
+  padding: 1rem 1.25rem;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--cs-shadow-sm);
+}
+
+.cs-alert-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.cs-alert-content {
+  flex: 1 1 auto;
+  font-size: 0.925rem;
+}
+
+.cs-alert-info {
+  background-color: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
+.cs-alert-success {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.cs-alert-warning {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.cs-alert-danger {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* --------------------------------------------------------------------------
+   8. Empty State & Loading Components
+   -------------------------------------------------------------------------- */
+.cs-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: var(--cs-bg-card);
+  border: 2px dashed var(--cs-border);
+  border-radius: var(--cs-radius-lg);
+}
+
+.cs-empty-icon {
+  font-size: 3rem;
+  color: var(--cs-text-light);
+  margin-bottom: 1rem;
+}
+
+.cs-loading-state {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.cs-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-width: 0.25em;
+  color: var(--cs-primary);
+}
+
+/* --------------------------------------------------------------------------
+   9. Footer Styling
+   -------------------------------------------------------------------------- */
+.cs-footer {
+  background-color: #0f172a;
+  color: #94a3b8;
+  padding: 2.5rem 0 1.5rem;
+  margin-top: 3rem;
+  font-size: 0.9rem;
+}
+
+.cs-footer a {
+  color: #cbd5e1;
+  text-decoration: none;
+}
+
+.cs-footer a:hover {
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   10. Landing Page Specific Styles
+   -------------------------------------------------------------------------- */
+.hero-section {
+  background: linear-gradient(180deg, #ffffff 0%, var(--cs-bg-main) 100%);
+  border-bottom: 1px solid var(--cs-border);
+  padding: 4rem 0 3.5rem;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--cs-accent-light);
+  color: var(--cs-accent);
+  font-weight: 700;
+  font-size: 0.825rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 50rem;
+  margin-bottom: 1.25rem;
+}
+
+.section-title {
+  position: relative;
+  margin-bottom: 2rem;
+  padding-bottom: 0.75rem;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: var(--cs-accent);
+  border-radius: 2px;
+}
+
+.feature-box {
+  background: white;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-md);
+  padding: 1.5rem;
+  height: 100%;
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  background-color: var(--cs-bg-alt);
+  color: var(--cs-primary);
+  border-radius: var(--cs-radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}

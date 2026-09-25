@@ -1,0 +1,28 @@
+{% comment %}
+Reusable Alert / Toast Notification Component
+Usage:
+  {% include "components/alert.html" with level="success" title="Report Created" message="Your civic issue report has been submitted." dismissible=True %}
+{% endcomment %}
+
+<div class="cs-alert cs-alert-{{ level|default:'info' }} {% if dismissible %}alert-dismissible fade show{% endif %} role="alert">
+  <div class="cs-alert-icon">
+    {% if level == "success" %}
+      <i class="bi bi-check-circle-fill"></i>
+    {% elif level == "warning" %}
+      <i class="bi bi-exclamation-triangle-fill"></i>
+    {% elif level == "danger" %}
+      <i class="bi bi-x-octagon-fill"></i>
+    {% else %}
+      <i class="bi bi-info-circle-fill"></i>
+    {% endif %}
+  </div>
+  <div class="cs-alert-content">
+    {% if title %}
+      <strong class="d-block mb-1">{{ title }}</strong>
+    {% endif %}
+    <div>{{ message }}</div>
+  </div>
+  {% if dismissible %}
+    <button type="button" class="btn-close ms-auto align-self-center" data-bs-dismiss="alert" aria-label="Close"></button>
+  {% endif %}
+</div>

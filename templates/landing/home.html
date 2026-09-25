@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}CitySense | AI-Assisted Civic Intelligence & Resolution Platform{% endblock %}
+
+{% block content %}
+<!-- ==========================================================================
+     HERO SECTION
+     ========================================================================== -->
+<section id="hero" class="hero-section">
+  <div class="container">
+    <div class="row align-items-center gy-5">
+      <div class="col-lg-7">
+        <div class="hero-badge">
+          <i class="bi bi-stars"></i> AI-Assisted Civic Intelligence Platform
+        </div>
+        <h1 class="display-4 fw-extrabold mb-3 text-dark">
+          See the problem.<br>
+          <span style="color: var(--cs-accent);">Understand the issue.</span><br>
+          Drive the action.
+        </h1>
+        <p class="lead text-muted-cs mb-4">
+          CitySense transforms unstructured citizen reports—descriptions, photos, and location coordinates—into prioritized, aggregated civic incidents with automated AI triage and spatial duplicate detection.
+        </p>
+
+        <div class="d-flex flex-wrap gap-3 mb-4">
+          <a href="#components" class="btn btn-cs-primary btn-lg d-inline-flex align-items-center gap-2">
+            <i class="bi bi-grid-fill"></i> Explore Design Components
+          </a>
+          <a href="#workflow" class="btn btn-cs-secondary btn-lg d-inline-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3-fill"></i> View Platform Workflow
+          </a>
+        </div>
+
+        <!-- Quick Platform Stats -->
+        <div class="row g-3 pt-3 border-top">
+          <div class="col-4">
+            <div class="fw-bold text-dark fs-5">0% Waste</div>
+            <div class="small text-muted-cs">Duplicate Incident Detection</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold text-dark fs-5">Multimodal</div>
+            <div class="small text-muted-cs">AI Triage & Categorization</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold text-dark fs-5">End-to-End</div>
+            <div class="small text-muted-cs">Transparent Citizen Tracking</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <!-- Sample Featured Card Preview -->
+        <div class="p-3 bg-white border rounded-3 shadow-md position-relative">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill font-weight-bold">
+              <i class="bi bi-cpu-fill me-1"></i> Live Preview Card
+            </span>
+            <span class="small text-muted"><i class="bi bi-shield-check text-success me-1"></i> Verified Contract</span>
+          </div>
+
+          {% if sample_issues %}
+            {% include "components/card.html" with issue=sample_issues.0 %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     CORE WORKFLOW SECTION (NOT A CRUD SYSTEM)
+     ========================================================================== -->
+<section id="workflow" class="py-5 bg-white border-bottom">
+  <div class="container">
+    <div class="row justify-content-center text-center mb-5">
+      <div class="col-lg-8">
+        <h2 class="section-title mx-auto text-center">Beyond Generic CRUD Complaints</h2>
+        <p class="text-muted-cs fs-5">
+          Traditional portals store disconnected complaints. CitySense creates continuous civic intelligence by clustering reports into unified civic incidents.
+        </p>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="feature-box">
+          <div class="feature-icon">
+            <i class="bi bi-chat-left-text"></i>
+          </div>
+          <h3 class="h5 fw-bold mb-2">1. Unstructured Report</h3>
+          <p class="text-muted-cs small mb-0">
+            Citizens report issues using plain text, optional photos, and precise GPS location markers.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="feature-box">
+          <div class="feature-icon" style="background-color: var(--cs-accent-light); color: var(--cs-accent);">
+            <i class="bi bi-cpu"></i>
+          </div>
+          <h3 class="h5 fw-bold mb-2">2. AI Triage</h3>
+          <p class="text-muted-cs small mb-0">
+            AI suggests problem categories, severity priority, department routing, and concise executive summaries.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="feature-box">
+          <div class="feature-icon" style="background-color: #fef3c7; color: #d97706;">
+            <i class="bi bi-layers-half"></i>
+          </div>
+          <h3 class="h5 fw-bold mb-2">3. Incident Aggregation</h3>
+          <p class="text-muted-cs small mb-0">
+            Spatial and semantic analysis aggregates redundant duplicate reports into a single actionable civic incident.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="feature-box">
+          <div class="feature-icon" style="background-color: #dcfce7; color: #16a34a;">
+            <i class="bi bi-check2-circle"></i>
+          </div>
+          <h3 class="h5 fw-bold mb-2">4. Resolution & Tracking</h3>
+          <p class="text-muted-cs small mb-0">
+            Administrators assign departments and execute resolution with transparent status updates for citizens.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     PHASE 1 REUSABLE UI COMPONENT SHOWCASE
+     ========================================================================== -->
+<section id="components" class="py-5">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h2 class="section-title mb-1">Reusable Frontend Components</h2>
+        <p class="text-muted-cs mb-0">Standardized Django partials for Phase 1 design foundation.</p>
+      </div>
+      <span class="badge bg-dark text-white px-3 py-2 rounded-pill">Frontend Phase 1 Foundation</span>
+    </div>
+
+    <!-- 1. Status Badges -->
+    <div class="card mb-4 border shadow-sm">
+      <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-tag-fill text-primary"></i> Status Badges (`components/status_badge.html`)
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">Six distinct status states defined in the specification:</p>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+          {% for status_item in statuses %}
+            <div>
+              {% include "components/status_badge.html" with status=status_item %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Priority Badges -->
+    <div class="card mb-4 border shadow-sm">
+      <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle-fill text-warning"></i> Priority Badges (`components/priority_badge.html`)
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">Four severity priority levels defined in the specification:</p>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+          {% for priority_item in priorities %}
+            <div>
+              {% include "components/priority_badge.html" with priority=priority_item %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Reusable Buttons & Typography -->
+    <div class="card mb-4 border shadow-sm">
+      <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-ui-checks text-accent"></i> Buttons & Typography System
+      </div>
+      <div class="card-body">
+        <div class="row gy-3 align-items-center">
+          <div class="col-md-6">
+            <h5 class="fs-6 text-muted mb-2">Button Variants</h5>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-cs-primary">Primary Button</button>
+              <button class="btn btn-cs-secondary">Secondary</button>
+              <button class="btn btn-cs-accent">Accent Button</button>
+              <button class="btn btn-cs-outline">Outline Button</button>
+            </div>
+          </div>
+          <div class="col-md-6 border-start-md">
+            <h5 class="fs-6 text-muted mb-2">Button Sizes & Icons</h5>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <button class="btn btn-cs-primary btn-sm"><i class="bi bi-check-lg"></i> Small Action</button>
+              <button class="btn btn-cs-secondary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+              <button class="btn btn-cs-outline btn-sm"><i class="bi bi-download"></i> Export</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Reusable Alert Components -->
+    <div class="card mb-4 border shadow-sm">
+      <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-bell-fill text-info"></i> Alerts & Toasts (`components/alert.html`)
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            {% include "components/alert.html" with level="info" title="AI Triage Complete" message="AI has automatically categorized this report as 'Pothole'." dismissible=True %}
+          </div>
+          <div class="col-md-6">
+            {% include "components/alert.html" with level="success" title="Incident Resolved" message="Road Maintenance completed repairs on Main Avenue." dismissible=True %}
+          </div>
+          <div class="col-md-6">
+            {% include "components/alert.html" with level="warning" title="Potential Duplicate Detected" message="3 reports nearby match this location and category." dismissible=True %}
+          </div>
+          <div class="col-md-6">
+            {% include "components/alert.html" with level="danger" title="Critical Priority Alert" message="Streetlight grid outage reported in high-traffic zone." dismissible=True %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Reusable Cards Grid -->
+    <div class="card mb-4 border shadow-sm">
+      <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
+        <i class="bi bi-card-heading text-primary"></i> Reusable Issue/Incident Cards (`components/card.html`)
+      </div>
+      <div class="card-body">
+        <div class="row g-4">
+          {% for issue_item in sample_issues %}
+            <div class="col-md-4">
+              {% include "components/card.html" with issue=issue_item %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Empty State & Loading State -->
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card h-100 border shadow-sm">
+          <div class="card-header bg-light fw-bold text-dark">
+            Empty State (`components/empty_state.html`)
+          </div>
+          <div class="card-body">
+            {% include "components/empty_state.html" with title="No Active Incidents" message="There are currently no open civic issues requiring admin action in this sector." icon="bi-check-all" action_text="View Resolved History" action_url="#workflow" %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card h-100 border shadow-sm">
+          <div class="card-header bg-light fw-bold text-dark">
+            Loading State (`components/loading_state.html`)
+          </div>
+          <div class="card-body d-flex align-items-center justify-content-center">
+            {% include "components/loading_state.html" with message="Running spatial duplicate detection algorithms..." %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==========================================================================
+     CIVIC CATEGORIES SECTION
+     ========================================================================== -->
+<section id="categories" class="py-5 bg-white border-top">
+  <div class="container">
+    <div class="row justify-content-center text-center mb-4">
+      <div class="col-lg-8">
+        <h2 class="section-title mx-auto text-center">Supported Civic Problem Categories</h2>
+        <p class="text-muted-cs">Standardized issue classification system specified for CitySense AI Triage.</p>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-cone-striped fs-2 text-warning mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Pothole</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-trash3-fill fs-2 text-success mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Garbage</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-lightbulb-fill fs-2 text-primary mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Streetlight</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-droplet-fill fs-2 text-info mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Water Leakage</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-water fs-2 text-secondary mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Drainage</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-signpost-split-fill fs-2 text-danger mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Road Damage</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-grid-fill fs-2 text-dark mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Other Civic Issues</h4>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 border rounded text-center bg-light">
+          <i class="bi bi-shield-lock-fill fs-2 text-indigo mb-2 d-block"></i>
+          <h4 class="h6 fw-bold mb-0">Admin Triage</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

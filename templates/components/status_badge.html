@@ -1,0 +1,35 @@
+{% comment %}
+Reusable Status Badge Component
+Usage: {% include "components/status_badge.html" with status=issue.status %}
+Supported values: REPORTED, VERIFIED, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED
+{% endcomment %}
+
+{% if status == "REPORTED" %}
+  <span class="cs-badge badge-status-reported" title="Issue newly reported by citizen">
+    <i class="bi bi-circle-fill" style="font-size: 0.45rem;"></i> Reported
+  </span>
+{% elif status == "VERIFIED" %}
+  <span class="cs-badge badge-status-verified" title="AI / Admin verified issue validity">
+    <i class="bi bi-patch-check-fill"></i> Verified
+  </span>
+{% elif status == "ASSIGNED" %}
+  <span class="cs-badge badge-status-assigned" title="Assigned to municipal department">
+    <i class="bi bi-person-badge"></i> Assigned
+  </span>
+{% elif status == "IN_PROGRESS" %}
+  <span class="cs-badge badge-status-in_progress" title="Work actively underway by response team">
+    <i class="bi bi-gear-wide-connected"></i> In Progress
+  </span>
+{% elif status == "RESOLVED" %}
+  <span class="cs-badge badge-status-resolved" title="Issue successfully resolved">
+    <i class="bi bi-check-circle-fill"></i> Resolved
+  </span>
+{% elif status == "REJECTED" %}
+  <span class="cs-badge badge-status-rejected" title="Issue rejected or marked invalid">
+    <i class="bi bi-x-circle-fill"></i> Rejected
+  </span>
+{% else %}
+  <span class="cs-badge badge-status-reported">
+    <i class="bi bi-info-circle"></i> {{ status|default:"Pending" }}
+  </span>
+{% endif %}
