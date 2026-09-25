@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>My reports | CitySense</title></head>
+<body>
+  <h1>My reports</h1>
+  <p>Temporary minimal dashboard; final presentation is being built separately.</p>
+  <p><a href="{% url 'issues:create' %}">Submit an issue</a></p>
+  {% if issues %}
+    <table>
+      <thead><tr><th>Issue</th><th>Title</th><th>Incident</th><th>Status</th><th>Category</th><th>Priority</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for issue in issues %}
+          <tr>
+            <td><a href="{% url 'issues:detail' issue.pk %}">{{ issue.issue_code }}</a></td>
+            <td>{{ issue.title }}</td>
+            <td>{% if issue.incident %}<a href="{% url 'incidents:detail' issue.incident.pk %}">{{ issue.incident.incident_code }}</a>{% else %}—{% endif %}</td>
+            <td>{{ issue.incident.get_status_display|default:"—" }}</td>
+            <td>{{ issue.incident.category|default:"—" }}</td>
+            <td>{{ issue.incident.get_priority_display|default:"—" }}</td>
+            <td>{{ issue.created_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>You have not submitted any reports yet.</p>
+  {% endif %}
+  <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit">Log out</button></form>
+</body>
+</html>

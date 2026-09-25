@@ -26,6 +26,16 @@ An **Incident** is the underlying civic problem that administrators manage and r
 - Resolution information (status, notes, resolved_at) belongs to Incident — NOT to Issue
 - Administrators are responsible for transitioning Incident status
 
+### Phase 3 behavior
+
+- `accounts:register` creates a CITIZEN account only; self-selected roles are ignored.
+- `issues:create` is available to authenticated users and takes `title`, `description`, optional `image`, `latitude`, and `longitude`. The reporter is always the session user.
+- Each submitted Issue creates a new Incident with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1`.
+- The Issue is linked to that Incident and an initial `REPORTED` status history record is created in the same database transaction.
+- **Phase 3 creates a new Incident for each submitted Issue because AI classification and duplicate/incident aggregation are Phase 4/5 features.**
+- Citizens can access their own reports and an Incident only when it is associated with one of their reports. Incident status and classification are read-only in citizen routes.
+- Issue images are limited to JPEG, PNG, GIF, or WebP and 5 MB.
+
 ---
 
 ## Issue Fields
@@ -44,7 +54,7 @@ An **Incident** is the underlying civic problem that administrators manage and r
 | `ai_department` | FK → Department | AI suggestion only |
 | `ai_summary` | text | AI-generated summary |
 | `ai_confidence` | float | 0.0–1.0 |
-| `incident` | FK → Incident | Nullable. Set by AI pipeline |
+| `incident` | FK → Incident | Nullable in the model; Phase 3 submission links a newly created Incident |
 | `created_at` | datetime | |
 | `updated_at` | datetime | |
 
@@ -63,7 +73,7 @@ An **Incident** is the underlying civic problem that administrators manage and r
 | `assigned_to` | FK → User | Admin user |
 | `latitude` | decimal | Representative location |
 | `longitude` | decimal | Representative location |
-| `severity_score` | float | Computed by AI pipeline (Phase 3) |
+| `severity_score` | float | Reserved for future severity logic; not populated in Phase 3 |
 | `report_count` | int | Count of linked Issues |
 | `resolution_notes` | text | |
 | `resolved_at` | datetime | Set when status = RESOLVED |
@@ -145,7 +155,9 @@ Seeded departments: Road Maintenance, Sanitation, Electrical, Water Supply, Drai
 
 ---
 
-## AI Analysis Response Shape
+## Future AI Analysis Response Shape
+
+This describes a future AI pipeline contract. Phase 3 does not call an AI service or write AI suggestions.
 
 The AI pipeline returns (or falls back to deterministic defaults):
 

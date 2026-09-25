@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-PHASE 2 COMPLETE — Core Data Model + Authentication Foundation
+PHASE 3 IMPLEMENTED — Citizen Reporting Workflow (verification pending)
 
 ## Completed
 
@@ -31,11 +31,18 @@ PHASE 2 COMPLETE — Core Data Model + Authentication Foundation
 - [x] **Phase 2**: `API_CONTRACT.md` updated with full field documentation
 - [x] **Phase 2**: `TECHNICAL_NOTES.md` updated with architectural notes
 - [x] **Phase 2**: Committed: `feat: implement CitySense core data model`
+- [x] **Phase 3**: Citizen registration, email login and POST logout
+- [x] **Phase 3**: Authenticated citizen dashboard and private issue list/detail
+- [x] **Phase 3**: Validated issue submission with optional bounded location and image
+- [x] **Phase 3**: Every new Issue gets its own `Other` / `MEDIUM` / `General` / `REPORTED` Incident
+- [x] **Phase 3**: Issue and Incident creation plus initial status history are transactional
+- [x] **Phase 3**: Citizen-scoped incident details and read-only status history
+- [x] **Phase 3**: Minimal functional templates for the citizen workflow
+- [x] **Phase 3**: Phase 3 test coverage added; execution pending a working local Pillow install
 
-## In Progress
+## Verification
 
-- [ ] Issue reporting views and forms (Phase 3)
-- [ ] Authentication views — login / register (Phase 3)
+The current MSYS Python 3.14 environment could not build Pillow, which is required by Django `ImageField`. As a result, `manage.py check` and `manage.py test` stop during app loading. Re-run both commands in an environment with the declared dependencies installed before treating Phase 3 as verified.
 
 ## Not Started
 
@@ -50,7 +57,6 @@ PHASE 2 COMPLETE — Core Data Model + Authentication Foundation
 
 ## Next Milestone
 
-Phase 3 — Issue Reporting + Authentication Views.
+Phase 4 — AI triage and duplicate detection. These are not part of the current implementation.
 
-**Kshitij**: login/register backend views, issue submit logic, incident creation stub.
-**Palak**: base template, Bootstrap layout, citizen-facing pages, login/register forms (UI).
+Phase 3 intentionally creates a new Incident for each submitted Issue because AI classification and duplicate/incident aggregation are Phase 4/5 features.

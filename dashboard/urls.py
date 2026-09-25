@@ -1,9 +1,9 @@
-"""dashboard URL configuration — stub for Phase 1."""
-
 from django.urls import path
+
+from .views import index
 
 app_name = "dashboard"
 
 urlpatterns = [
-    # Dashboard URLs added in Phase 3 (analytics milestone)
+    path("", index, name="index"),
 ]

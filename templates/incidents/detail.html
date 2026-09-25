@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ incident.incident_code }} | CitySense</title></head>
+<body>
+  <h1>{{ incident.incident_code }}</h1>
+  <p>Temporary minimal incident view; status and classification are read-only.</p>
+  <p>{{ incident.title }}</p>
+  <p>Category: {{ incident.category }}</p>
+  <p>Priority: {{ incident.get_priority_display }}</p>
+  <p>Department: {{ incident.department|default:"Unassigned" }}</p>
+  <p>Status: {{ incident.get_status_display }}</p>
+  <p>Report count: {{ incident.report_count }}</p>
+  <h2>Status history</h2>
+  <ol>{% for entry in incident.status_history.all %}<li>{{ entry.get_new_status_display }} — {{ entry.created_at }}{% if entry.comment %}: {{ entry.comment }}{% endif %}</li>{% empty %}<li>No history available.</li>{% endfor %}</ol>
+  <p><a href="{% url 'dashboard:index' %}">Back to my reports</a></p>
+</body>
+</html>

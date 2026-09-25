@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>My issues | CitySense</title></head>
+<body>
+  <h1>My issues</h1>
+  <p>Temporary minimal list; only your submitted reports are shown.</p>
+  <ul>{% for issue in issues %}<li><a href="{% url 'issues:detail' issue.pk %}">{{ issue.issue_code }} — {{ issue.title }}</a></li>{% empty %}<li>No reports yet.</li>{% endfor %}</ul>
+  <p><a href="{% url 'issues:create' %}">Submit an issue</a> · <a href="{% url 'dashboard:index' %}">Dashboard</a></p>
+</body>
+</html>

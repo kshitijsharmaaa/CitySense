@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Log in | CitySense</title></head>
+<body>
+  <h1>Log in to CitySense</h1>
+  <p>Temporary minimal form; final presentation is being built separately.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Log in</button>
+  </form>
+  <p><a href="{% url 'accounts:register' %}">Create a citizen account</a></p>
+</body>
+</html>

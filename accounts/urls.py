@@ -1,9 +1,11 @@
-"""accounts URL configuration — stub for Phase 1."""
-
 from django.urls import path
+
+from .views import CitySenseLoginView, logout_view, register
 
 app_name = "accounts"
 
 urlpatterns = [
-    # Authentication URLs added in Phase 2 (accounts milestone)
+    path("register/", register, name="register"),
+    path("login/", CitySenseLoginView.as_view(), name="login"),
+    path("logout/", logout_view, name="logout"),
 ]

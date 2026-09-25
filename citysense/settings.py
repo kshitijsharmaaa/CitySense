@@ -162,5 +162,5 @@ AI_MODEL = config("AI_MODEL", default="gemini-1.5-flash")
 # LOGIN / AUTH REDIRECTS (placeholder — wired up in accounts phase)
 # ---------------------------------------------------------------------------
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/dashboard/"
+LOGIN_REDIRECT_URL = "dashboard:index"
 LOGOUT_REDIRECT_URL = "/"

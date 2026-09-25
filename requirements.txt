@@ -1,8 +1,9 @@
 # CitySense — Python dependencies
-# Generated for Python 3.14 / Django 5.1
+# Generated for Python 3.14 / Django 5.2
 
 # ── Core Framework ──────────────────────────────────────────────────────────
-Django==5.1.15
+Django==5.2.17
+Pillow>=10.0.0                 # Validate uploaded report images
 
 # ── Database ─────────────────────────────────────────────────────────────────
 psycopg2-binary==2.9.12       # PostgreSQL adapter

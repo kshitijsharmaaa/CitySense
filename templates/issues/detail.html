@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ issue.issue_code }} | CitySense</title></head>
+<body>
+  <h1>{{ issue.issue_code }}: {{ issue.title }}</h1>
+  <p>Temporary minimal detail; report and resolution fields are read-only.</p>
+  <p>{{ issue.description }}</p>
+  {% if issue.image %}<p><img src="{{ issue.image.url }}" alt="Photo for {{ issue.issue_code }}" style="max-width: 480px; height: auto"></p>{% endif %}
+  <p>Location: {% if issue.latitude != None and issue.longitude != None %}{{ issue.latitude }}, {{ issue.longitude }}{% else %}Not provided{% endif %}</p>
+  <p>Created: {{ issue.created_at }}</p>
+  {% if issue.incident %}
+    <h2>Associated incident</h2>
+    <p><a href="{% url 'incidents:detail' issue.incident.pk %}">{{ issue.incident.incident_code }}</a></p>
+    <p>Status: {{ issue.incident.get_status_display }}</p>
+    <p>Category: {{ issue.incident.category }}</p>
+    <p>Priority: {{ issue.incident.get_priority_display }}</p>
+    <p>Department: {{ issue.incident.department|default:"Unassigned" }}</p>
+  {% endif %}
+  <p><a href="{% url 'dashboard:index' %}">Back to my reports</a></p>
+</body>
+</html>

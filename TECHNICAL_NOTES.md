@@ -9,8 +9,8 @@
 | `accounts` | Backend | Custom user model, email auth, CITIZEN/ADMIN roles |
 | `issues` | Backend | Department lookup, citizen Issue reports |
 | `incidents` | Backend | Incident aggregation, status lifecycle, history |
-| `ai_engine` | Backend | AI triage, duplicate detection (Phase 3) |
-| `dashboard` | Backend (logic) + Frontend (UI) | Admin analytics and workflows |
+| `ai_engine` | Backend | Future AI triage and duplicate detection (Phase 4+) |
+| `dashboard` | Backend (logic) + Frontend (UI) | Phase 3 citizen report list; later admin analytics and workflows |
 
 ---
 
@@ -124,10 +124,10 @@ All secrets and environment-specific values come from environment variables.
 ```
 /health/           → citysense.views.health_check   (no auth)
 /admin/            → Django admin
-/accounts/…        → accounts app (Phase 3)
-/issues/…          → issues app (Phase 3)
-/incidents/…       → incidents app (Phase 3+)
-/dashboard/…       → dashboard app (Phase 4)
+/accounts/…        → register, email login, POST logout
+/issues/…          → authenticated citizen issue list, create, detail
+/incidents/…       → incident detail accessible through a citizen's own issue
+/dashboard/…       → authenticated citizen report dashboard
 ```
 
 ---
@@ -152,13 +152,25 @@ media/             → User-uploaded images (gitignored)
 
 ---
 
+### Phase 3 report creation
+
+`issues.services.create_issue_with_incident` owns the Phase 3 transaction. It saves the citizen's Issue, creates a separate Incident using `Other`, `MEDIUM`, `REPORTED`, and the `General` department, links the Issue, and writes the initial `REPORTED` status history entry. If any of these writes fails, the transaction rolls back.
+
+**Phase 3 creates a new Incident for each submitted Issue because AI classification and duplicate/incident aggregation are Phase 4/5 features.** The service boundary is where the later classification and duplicate-association decision can replace the stub. No AI calls or duplicate detection run in this phase.
+
+The citizen routes filter issue queries by `reported_by=request.user`. Incident detail is available only when the requested Incident is associated with one of that user's Issues. These views are read-only; classification and status changes remain outside the citizen workflow.
+
+Images are validated as JPEG, PNG, GIF, or WebP and capped at 5 MB. Coordinates are optional and bounded to latitude `[-90, 90]` and longitude `[-180, 180]`.
+
+---
+
 ## Phase Log
 
 | Phase | Description | Status |
 |---|---|---|
 | 1 | Django foundation scaffold | ✅ Complete |
 | 2 | Core data model + auth foundation | ✅ Complete |
-| 3 | Issue reporting + auth views | ⏳ Next |
+| 3 | Citizen reporting + auth views | ✅ Complete |
 | 4 | AI triage + duplicate detection | 🔜 |
 | 5 | Incident aggregation + severity | 🔜 |
 | 6 | Admin dashboard views | 🔜 |

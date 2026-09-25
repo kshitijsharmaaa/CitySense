@@ -12,6 +12,7 @@ Tests cover:
 """
 
 from django.test import TestCase
+from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 
@@ -105,3 +106,75 @@ class UserCreationTests(TestCase):
         )
         self.assertIn("str@example.com", str(user))
         self.assertIn("String User", str(user))
+
+
+class AuthenticationViewTests(TestCase):
+    def test_registration_creates_hashed_citizen_and_logs_in(self):
+        response = self.client.post(reverse("accounts:register"), {
+            "name": "New Citizen",
+            "email": "  NewCitizen@Example.COM ",
+            "password1": "CivicPass!2719",
+            "password2": "CivicPass!2719",
+        })
+        self.assertRedirects(response, reverse("dashboard:index"))
+        user = User.objects.get(email="newcitizen@example.com")
+        self.assertEqual(user.role, User.Role.CITIZEN)
+        self.assertNotEqual(user.password, "CivicPass!2719")
+        self.assertTrue(user.check_password("CivicPass!2719"))
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_registration_rejects_duplicate_email_case_insensitively(self):
+        User.objects.create_user("person@example.com", "Existing", "CivicPass!2719")
+        response = self.client.post(reverse("accounts:register"), {
+            "name": "Duplicate",
+            "email": "PERSON@EXAMPLE.COM",
+            "password1": "CivicPass!2719",
+            "password2": "CivicPass!2719",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertContains(response, "already exists")
+
+    def test_registration_ignores_attempt_to_choose_admin_role(self):
+        response = self.client.post(reverse("accounts:register"), {
+            "name": "Self Admin",
+            "email": "selfadmin@example.com",
+            "password1": "CivicPass!2719",
+            "password2": "CivicPass!2719",
+            "role": User.Role.ADMIN,
+        })
+        self.assertRedirects(response, reverse("dashboard:index"))
+        self.assertEqual(User.objects.get(email="selfadmin@example.com").role, User.Role.CITIZEN)
+
+    def test_registration_rejects_password_mismatch(self):
+        response = self.client.post(reverse("accounts:register"), {
+            "name": "Mismatch",
+            "email": "mismatch@example.com",
+            "password1": "CivicPass!2719",
+            "password2": "DifferentPass!18",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(email="mismatch@example.com").exists())
+
+    def test_valid_login_uses_email_and_redirects_to_dashboard(self):
+        User.objects.create_user("login@example.com", "Login Citizen", "CivicPass!2719")
+        response = self.client.post(reverse("accounts:login"), {
+            "username": "LOGIN@EXAMPLE.COM",
+            "password": "CivicPass!2719",
+        })
+        self.assertRedirects(response, reverse("dashboard:index"))
+
+    def test_invalid_login_is_rejected(self):
+        response = self.client.post(reverse("accounts:login"), {
+            "username": "nobody@example.com",
+            "password": "WrongPassword!18",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Please enter a correct Email address and password.")
+
+    def test_logout_invalidates_session_and_redirects_to_login(self):
+        user = User.objects.create_user("logout@example.com", "Logout Citizen", "CivicPass!2719")
+        self.client.force_login(user)
+        response = self.client.post(reverse("accounts:logout"))
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
