@@ -1,14 +1,241 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Submit an issue | CitySense</title></head>
-<body>
-  <h1>Submit an issue</h1>
-  <p>Temporary minimal form; final presentation is being built separately.</p>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Submit report</button>
-  </form>
-  <p><a href="{% url 'dashboard:index' %}">Back to my reports</a></p>
-</body>
-</html>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Report a Civic Issue | CitySense{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet Map CSS for Location Picker -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #picker-map {
+    height: 320px;
+    width: 100%;
+    border-radius: var(--cs-radius-md);
+    border: 1px solid var(--cs-border);
+    z-index: 1;
+  }
+  .image-preview-box {
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: var(--cs-radius-md);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-4 py-md-5 bg-light">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h1 class="h2 fw-bold text-dark mb-1">Report a Civic Problem</h1>
+            <p class="text-muted-cs mb-0">Describe the issue, optionally attach a photo, and pick its location.</p>
+          </div>
+          <a href="{% url 'dashboard:index' %}" class="btn btn-cs-outline btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+          </a>
+        </div>
+
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}
+            {% include "components/alert.html" with level="danger" title="Validation Error" message=error dismissible=True %}
+          {% endfor %}
+        {% endif %}
+
+        <div class="card border shadow-sm rounded-3">
+          <div class="card-body p-4 p-md-5">
+            <form method="post" action="{% url 'issues:create' %}" enctype="multipart/form-data" id="issue-report-form">
+              {% csrf_token %}
+
+              <!-- 1. Title -->
+              <div class="mb-4">
+                <label for="id_title" class="form-label fw-bold text-dark fs-6">
+                  Issue Title <span class="text-danger">*</span>
+                </label>
+                <input type="text" name="title" id="id_title" class="form-control form-control-lg {% if form.title.errors %}is-invalid{% endif %}" placeholder="e.g. Large pothole near central market street" value="{{ form.title.value|default:'' }}" required maxlength="255">
+                {% if form.title.errors %}
+                  <div class="invalid-feedback d-block text-danger small mt-1">
+                    {{ form.title.errors.0 }}
+                  </div>
+                {% else %}
+                  <div class="form-text text-muted-cs small">Provide a concise headline describing the problem.</div>
+                {% endif %}
+              </div>
+
+              <!-- 2. Description -->
+              <div class="mb-4">
+                <label for="id_description" class="form-label fw-bold text-dark fs-6">
+                  Detailed Description <span class="text-danger">*</span>
+                </label>
+                <textarea name="description" id="id_description" rows="5" class="form-control {% if form.description.errors %}is-invalid{% endif %}" placeholder="Provide clear details regarding the problem, exact surroundings, or potential safety hazards..." required>{{ form.description.value|default:'' }}</textarea>
+                {% if form.description.errors %}
+                  <div class="invalid-feedback d-block text-danger small mt-1">
+                    {{ form.description.errors.0 }}
+                  </div>
+                {% else %}
+                  <div class="form-text text-muted-cs small">AI triage will analyze your text to categorize and prioritize the report.</div>
+                {% endif %}
+              </div>
+
+              <!-- 3. Photo Upload -->
+              <div class="mb-4">
+                <label for="id_image" class="form-label fw-bold text-dark fs-6">
+                  Photo Attachment <span class="badge bg-light text-muted border ms-1">Optional</span>
+                </label>
+                <input type="file" name="image" id="id_image" class="form-control {% if form.image.errors %}is-invalid{% endif %}" accept="image/jpeg,image/png,image/gif,image/webp">
+                {% if form.image.errors %}
+                  <div class="invalid-feedback d-block text-danger small mt-1">
+                    {{ form.image.errors.0 }}
+                  </div>
+                {% else %}
+                  <div class="form-text text-muted-cs small">Supported formats: JPEG, PNG, GIF, WebP. Maximum size: 5 MB.</div>
+                {% endif %}
+
+                <!-- Instant Image Preview Box -->
+                <div id="image-preview-wrapper" class="mt-3 d-none">
+                  <span class="small fw-semibold text-muted d-block mb-1">Image Preview:</span>
+                  <img id="image-preview" src="#" alt="Upload preview" class="img-fluid image-preview-box border">
+                </div>
+              </div>
+
+              <!-- 4. Location Picker (Leaflet Map) -->
+              <div class="mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <label class="form-label fw-bold text-dark fs-6 mb-0">
+                    Pin Location on Map <span class="badge bg-light text-muted border ms-1">Optional</span>
+                  </label>
+                  <button type="button" id="btn-use-location" class="btn btn-cs-outline btn-sm py-1 px-2">
+                    <i class="bi bi-geo-fill text-danger me-1"></i> Detect My GPS Location
+                  </button>
+                </div>
+
+                <div id="picker-map" class="mb-3"></div>
+
+                <div class="row g-3">
+                  <div class="col-6">
+                    <label for="id_latitude" class="form-label small text-muted">Latitude</label>
+                    <input type="number" step="any" name="latitude" id="id_latitude" class="form-control form-control-sm bg-light" placeholder="e.g. 28.6139" value="{{ form.latitude.value|default:'' }}" readonly>
+                  </div>
+                  <div class="col-6">
+                    <label for="id_longitude" class="form-label small text-muted">Longitude</label>
+                    <input type="number" step="any" name="longitude" id="id_longitude" class="form-control form-control-sm bg-light" placeholder="e.g. 77.2090" value="{{ form.longitude.value|default:'' }}" readonly>
+                  </div>
+                </div>
+                <div class="form-text text-muted-cs small mt-1">
+                  Click on the map or drag the pin to set the exact coordinates of the issue.
+                </div>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="d-grid pt-2">
+                <button type="submit" class="btn btn-cs-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2">
+                  <i class="bi bi-send-fill"></i> Submit Civic Report
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet Map JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Image preview handler
+  const imageInput = document.getElementById("id_image");
+  const previewWrapper = document.getElementById("image-preview-wrapper");
+  const previewImg = document.getElementById("image-preview");
+
+  if (imageInput) {
+    imageInput.addEventListener("change", function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewImg.src = e.target.result;
+          previewWrapper.classList.remove("d-none");
+        }
+        reader.readAsDataURL(file);
+      } else {
+        previewWrapper.classList.add("d-none");
+      }
+    });
+  }
+
+  // Leaflet Map Initialization
+  const defaultLat = parseFloat(document.getElementById("id_latitude").value) || 28.6139;
+  const defaultLng = parseFloat(document.getElementById("id_longitude").value) || 77.2090;
+
+  const map = L.map('picker-map').setView([defaultLat, defaultLng], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  let marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+
+  function updateCoordinates(lat, lng) {
+    document.getElementById("id_latitude").value = lat.toFixed(6);
+    document.getElementById("id_longitude").value = lng.toFixed(6);
+  }
+
+  // If initial values exist, update
+  if (document.getElementById("id_latitude").value) {
+    updateCoordinates(defaultLat, defaultLng);
+  }
+
+  marker.on('dragend', function(e) {
+    const latLng = marker.getLatLng();
+    updateCoordinates(latLng.lat, latLng.lng);
+  });
+
+  map.on('click', function(e) {
+    const latLng = e.latlng;
+    marker.setLatLng(latLng);
+    updateCoordinates(latLng.lat, latLng.lng);
+  });
+
+  // GPS Geolocation button
+  const gpsBtn = document.getElementById("btn-use-location");
+  if (gpsBtn) {
+    gpsBtn.addEventListener("click", function() {
+      if ("geolocation" in navigator) {
+        gpsBtn.disabled = true;
+        gpsBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Locating...';
+
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            map.setView([lat, lng], 16);
+            marker.setLatLng([lat, lng]);
+            updateCoordinates(lat, lng);
+
+            gpsBtn.disabled = false;
+            gpsBtn.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i> Location Set';
+          },
+          function(error) {
+            gpsBtn.disabled = false;
+            gpsBtn.innerHTML = '<i class="bi bi-geo-fill text-danger me-1"></i> Detect My GPS Location';
+            alert("Could not retrieve GPS location: " + error.message);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        alert("Geolocation is not supported by your browser.");
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

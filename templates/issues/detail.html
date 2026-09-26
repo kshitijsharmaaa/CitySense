@@ -1,21 +1,157 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>{{ issue.issue_code }} | CitySense</title></head>
-<body>
-  <h1>{{ issue.issue_code }}: {{ issue.title }}</h1>
-  <p>Temporary minimal detail; report and resolution fields are read-only.</p>
-  <p>{{ issue.description }}</p>
-  {% if issue.image %}<p><img src="{{ issue.image.url }}" alt="Photo for {{ issue.issue_code }}" style="max-width: 480px; height: auto"></p>{% endif %}
-  <p>Location: {% if issue.latitude != None and issue.longitude != None %}{{ issue.latitude }}, {{ issue.longitude }}{% else %}Not provided{% endif %}</p>
-  <p>Created: {{ issue.created_at }}</p>
-  {% if issue.incident %}
-    <h2>Associated incident</h2>
-    <p><a href="{% url 'incidents:detail' issue.incident.pk %}">{{ issue.incident.incident_code }}</a></p>
-    <p>Status: {{ issue.incident.get_status_display }}</p>
-    <p>Category: {{ issue.incident.category }}</p>
-    <p>Priority: {{ issue.incident.get_priority_display }}</p>
-    <p>Department: {{ issue.incident.department|default:"Unassigned" }}</p>
-  {% endif %}
-  <p><a href="{% url 'dashboard:index' %}">Back to my reports</a></p>
-</body>
-</html>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ issue.issue_code }} — {{ issue.title }} | CitySense{% endblock %}
+
+{% block extra_head %}
+{% if issue.latitude and issue.longitude %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #detail-map {
+    height: 250px;
+    width: 100%;
+    border-radius: var(--cs-radius-md);
+    border: 1px solid var(--cs-border);
+  }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="py-4 py-md-5">
+  <div class="container">
+
+    <!-- Breadcrumb Nav -->
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}" class="text-decoration-none">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'issues:list' %}" class="text-decoration-none">My Reports</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ issue.issue_code }}</li>
+      </ol>
+    </nav>
+
+    <div class="row gy-4">
+      <div class="col-lg-8">
+        <!-- Main Issue Card -->
+        <div class="card border shadow-sm rounded-3 mb-4">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-dark text-white font-monospace fs-6 px-3 py-2">{{ issue.issue_code }}</span>
+                {% if issue.ai_category %}
+                  <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-tag me-1"></i>{{ issue.ai_category }}</span>
+                {% endif %}
+              </div>
+              <span class="text-muted-cs small"><i class="bi bi-clock me-1"></i>Reported {{ issue.created_at|date:"M d, Y at H:i" }}</span>
+            </div>
+
+            <h1 class="h2 fw-bold text-dark mb-3">{{ issue.title }}</h1>
+            <p class="text-secondary fs-6 lead mb-4" style="white-space: pre-line;">{{ issue.description }}</p>
+
+            <!-- Uploaded Image -->
+            {% if issue.image %}
+              <div class="mb-4">
+                <h3 class="h6 fw-bold text-dark mb-2"><i class="bi bi-image me-1"></i> Attached Photo</h3>
+                <img src="{{ issue.image.url }}" alt="Report photo" class="img-fluid rounded-3 border shadow-sm" style="max-height: 450px; width: 100%; object-fit: cover;">
+              </div>
+            {% endif %}
+
+            <!-- Location Map -->
+            {% if issue.latitude and issue.longitude %}
+              <div class="mb-4">
+                <h3 class="h6 fw-bold text-dark mb-2"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Location Coordinates</h3>
+                <div id="detail-map" class="mb-2"></div>
+                <div class="small text-muted-cs">
+                  Latitude: <strong>{{ issue.latitude }}</strong>, Longitude: <strong>{{ issue.longitude }}</strong>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <!-- Associated Incident Intelligence Card -->
+        {% if issue.incident %}
+          <div class="card border shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-light fw-bold text-dark d-flex align-items-center justify-content-between">
+              <span><i class="bi bi-diagram-3-fill text-primary me-1"></i> Associated Incident</span>
+              {% include "components/status_badge.html" with status=issue.incident.status %}
+            </div>
+            <div class="card-body p-4">
+              <div class="mb-3">
+                <span class="small text-muted-cs d-block mb-1">Incident Display Code:</span>
+                <div class="fw-bold fs-5 text-dark font-monospace">{{ issue.incident.incident_code }}</div>
+              </div>
+
+              <div class="mb-3">
+                <span class="small text-muted-cs d-block mb-1">Responsible Department:</span>
+                <span class="badge bg-light text-dark border">
+                  <i class="bi bi-building me-1"></i>{{ issue.incident.department.name|default:"General Civic Department" }}
+                </span>
+              </div>
+
+              <div class="mb-4">
+                <span class="small text-muted-cs d-block mb-1">Assigned Priority:</span>
+                {% include "components/priority_badge.html" with priority=issue.incident.priority %}
+              </div>
+
+              <a href="{% url 'incidents:detail' issue.incident.pk %}" class="btn btn-cs-primary w-100 d-inline-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-journal-text"></i> View Incident Details
+              </a>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- AI Suggestions Metadata Card -->
+        {% if issue.ai_summary or issue.ai_category %}
+          <div class="card border shadow-sm rounded-3">
+            <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
+              <i class="bi bi-cpu-fill text-accent"></i> AI Triage Suggestions
+            </div>
+            <div class="card-body p-4">
+              {% if issue.ai_summary %}
+                <div class="mb-3">
+                  <span class="small text-muted-cs d-block mb-1">AI Executive Summary:</span>
+                  <p class="small text-dark bg-light p-2.5 rounded border mb-0">{{ issue.ai_summary }}</p>
+                </div>
+              {% endif %}
+              {% if issue.ai_confidence %}
+                <div class="d-flex align-items-center justify-content-between small">
+                  <span class="text-muted-cs">AI Model Confidence:</span>
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">
+                    {{ issue.ai_confidence|floatformat:2 }} Confidence Score
+                  </span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{% if issue.latitude and issue.longitude %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const lat = parseFloat("{{ issue.latitude }}");
+  const lng = parseFloat("{{ issue.longitude }}");
+
+  if (!isNaN(lat) && !isNaN(lng)) {
+    const map = L.map('detail-map').setView([lat, lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    L.marker([lat, lng]).addTo(map).bindPopup("<b>{{ issue.issue_code }}</b><br>{{ issue.title|escapejs }}").openPopup();
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

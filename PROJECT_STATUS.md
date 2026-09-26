@@ -2,23 +2,23 @@
 
 ## Current Phase
 
-FRONTEND INTEGRATION & UI POLISH IN PROGRESS
+FRONTEND INTEGRATION COMPLETE & ALL BACKEND TESTS PASSING
 
 ## Completed
 
-- [x] **Repository setup**: GitHub repo initialized and cloned
-- [x] **Frontend Phase 1**: Django template engine setup, global CSS design system (`main.css`), `base.html`, responsive `navbar.html`, status badges, priority badges, card components, alerts/toasts, empty state, loading state, and `landing/home.html`.
-- [x] **Backend Phase 1**: `citysense` Django project scaffolded, apps (`accounts`, `issues`, `incidents`, `ai_engine`, `dashboard`), `settings.py` env vars, PostgreSQL/SQLite fallback, `/health/` endpoint.
-- [x] **Backend Phase 2**: Custom user model (`CitySenseUser`), `Department` lookup model, `Issue` model (CIV-NNNN codes), `Incident` model (INC-NNNN codes), `IncidentStatusHistory` audit trail, admin customization, unit tests.
-- [x] **Backend Phase 3**: Citizen registration (`/accounts/register/`), login (`/accounts/login/`), POST logout (`/accounts/logout/`), issue submission (`/issues/new/`), private issue list/detail (`/issues/`, `/issues/<int:pk>/`), dashboard (`/dashboard/`), and incident details (`/incidents/<int:pk>/`).
-
-## In Progress
-
-- [ ] Polished UI integration across all backend routes and forms
-- [ ] Responsive form rendering with image validation & drag-drop upload
-- [ ] Leaflet map & GPS location picker integration on `/issues/new/`
-- [ ] Dashboard analytics visual cards and status timelines
-- [ ] Responsive navigation and session state controls
+- [x] **Repository setup**: GitHub repo initialized and synchronized
+- [x] **Frontend Design System**: Global CSS design system (`main.css`), `base.html`, responsive `navbar.html`, status badges, priority badges, card components, alerts/toasts, empty state, loading state, and `landing/home.html`.
+- [x] **Frontend Integration Contract Compliance**:
+  - [x] Citizen Registration UI (`/accounts/register/`) with name, email, password1, password2 validation
+  - [x] Citizen Login UI (`/accounts/login/`) using field name `username` (email)
+  - [x] POST Logout handling with `{% csrf_token %}`
+  - [x] Citizen Issue Reporting UI (`/issues/new/`) with `multipart/form-data`, file size limits, client-side photo preview, and interactive Leaflet map location picker (click/drag pin & GPS auto-detect)
+  - [x] My Reports list view (`/issues/`) using integer PK URLs (`/issues/<int:pk>/`) and `CIV-XXXX` display codes
+  - [x] Issue Detail view (`/issues/<int:pk>/`) with location map, uploaded photo display, AI triage summary, and linked Incident (`/incidents/<int:pk>/`)
+  - [x] Citizen Dashboard (`/dashboard/`) with overview metrics, report list, and Leaflet overview map
+  - [x] Incident Detail view (`/incidents/<int:pk>/`) with `INC-XXXX` display code, status/priority badges, department assignments, and audit timeline
+- [x] **Backend Integration**: Django models, views, forms, authentication decorators, migrations, and database schema fully integrated.
+- [x] **Automated Tests**: 51/51 backend unit tests passing with zero failures.
 
 ## Next Milestones
 
