@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-PHASE 4 IMPLEMENTED — AI Smart Triage (verified)
+PHASE 5 IMPLEMENTED — Incident Intelligence (verified)
 
 ## Completed
 
@@ -43,18 +43,21 @@ PHASE 4 IMPLEMENTED — AI Smart Triage (verified)
 - [x] **Phase 4**: Validated AI category, priority, department, summary, and confidence recommendations on Issues
 - [x] **Phase 4**: Deterministic keyword fallback for missing credentials, provider errors/timeouts, malformed JSON, and invalid output
 - [x] **Phase 4**: AI calls run before the atomic Issue/Incident write; Incident values remain administrator-controlled
+- [x] **Phase 5**: Deterministic recent-incident matching with explainable category, location, text, and recency score
+- [x] **Phase 5**: Related reports aggregate only when a concrete category matches and the configured score threshold is met
+- [x] **Phase 5**: Unexpected matching/update errors fall back to a separate Incident without blocking Issue submission
+- [x] **Phase 5**: Report count, representative coordinates, and explainable severity score recalculate after association
+- [x] **Phase 5**: Admin-controlled Incident category, priority, department, and status remain unchanged during aggregation
+- [x] **Phase 5**: Tests cover unrelated and duplicate reports, missing coordinates, threshold behavior, aggregation, severity, and fallback
 
 ## Verification
 
 - `python manage.py check` — PASS (0 issues)
-- `python manage.py test` — PASS (68 tests)
+- `python manage.py test` — PASS (78 tests)
 - Verification used the project venv with process-local `DEBUG=False` because the inherited shell `DEBUG=release` value is not a valid Django boolean.
 
 ## Future Work
 
-- [ ] Duplicate detection
-- [ ] Incident aggregation
-- [ ] Severity scoring
 - [ ] Admin workflow views
 - [ ] Map visualization
 - [ ] Analytics / charts
@@ -62,6 +65,6 @@ PHASE 4 IMPLEMENTED — AI Smart Triage (verified)
 
 ## Next Milestone
 
-Phase 5 — duplicate detection and incident aggregation. These are not implemented yet.
+Phase 6 — admin dashboard views and workflows.
 
-Phase 4 continues to create a new Incident for each submitted Issue; AI suggestions remain on the Issue until an administrator reviews them.
+Phase 5 now associates sufficiently similar recent Issues with an existing active Incident. AI suggestions remain on Issues; they inform matching and severity but do not overwrite final Incident classification or status.

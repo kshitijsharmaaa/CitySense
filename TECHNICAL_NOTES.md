@@ -9,7 +9,7 @@
 | `accounts` | Backend | Custom user model, email auth, CITIZEN/ADMIN roles |
 | `issues` | Backend | Department lookup, citizen Issue reports |
 | `incidents` | Backend | Incident aggregation, status lifecycle, history |
-| `ai_engine` | Backend | Future AI triage and duplicate detection (Phase 4+) |
+| `ai_engine` | Backend | AI triage and validated report suggestions |
 | `dashboard` | Backend (logic) + Frontend (UI) | Phase 3 citizen report list; later admin analytics and workflows |
 
 ---
@@ -146,7 +146,7 @@ media/             → User-uploaded images (gitignored)
 
 - AI orchestration lives in `ai_engine.services`; Google-specific calls live behind the `ai_engine.providers` adapter
 - The current integration uses the Google Gen AI Python SDK (`google-genai`) and `AI_MODEL`
-- `AI_API_KEY` is read server-side only; `AI_TIMEOUT_SECONDS` bounds each provider request (default 8 seconds, capped at 30 seconds, one attempt)
+- `AI_API_KEY` is read server-side only; `AI_TIMEOUT_SECONDS` bounds each provider request (default 20 seconds, one attempt)
 - All AI output must be validated before use
 - AI failure must NOT block issue creation (deterministic fallback required)
 - API key read from `AI_API_KEY` env var — never hardcoded
@@ -158,13 +158,19 @@ media/             → User-uploaded images (gitignored)
 
 ---
 
-### Phase 3/4 report creation
+### Phase 3/4/5 report creation
 
 `issues.views.create` validates the submission and calls `ai_engine.services.triage_issue` before beginning a database transaction. The provider receives the title, description, and optional image, with a bounded request timeout. Missing credentials, provider exceptions, timeouts, malformed JSON, and invalid output return deterministic fallback values.
 
-`issues.services.create_issue_with_incident` owns the atomic database writes. It stores the validated recommendations in the existing Issue AI fields, creates a separate Incident using the existing `Other`, `MEDIUM`, `REPORTED`, and `General` defaults, links the Issue, and writes the initial `REPORTED` status history entry. The Incident's final category, priority, and department are not overwritten by AI suggestions.
+`issues.services.create_issue_with_incident` owns the atomic database writes. It stores validated recommendations in the existing Issue AI fields, then asks `incidents.intelligence` for a deterministic match. A match links the Issue to an existing active Incident and recalculates its report count, representative location, and severity. No match creates a new Incident using the existing `Other`, `MEDIUM`, `REPORTED`, and `General` defaults and writes the initial `REPORTED` status history entry. The Incident's final category, priority, department, and status are not overwritten during aggregation.
 
-**Each submitted Issue still creates a new Incident.** Phase 4 does not implement duplicate detection, incident clustering/aggregation, or severity scoring. AI fields are recommendations available through the existing Issue context; no REST endpoint or template redesign was added.
+AI suggestions are evidence, not authority: they can contribute to category matching and the severity calculation, but they never set final Incident classification. The detector compares reports from the last 30 days and excludes resolved/rejected Incidents. Its score weights category match (0.35), nearby location (0.35), text similarity (0.25), and recency (0.05); its configurable-in-code threshold is 0.60. A concrete non-`Other` category match is required. Geographic evidence applies only when both sides have coordinates and are within 0.5 km. The returned match assessment includes the score and signal details so association is explainable. If coordinates are absent, text and category evidence can still meet the threshold.
+
+Candidate scores use the strongest token-set overlap / normalized-token sequence similarity against the Incident title and its linked report texts. Location uses haversine distance. These are deterministic heuristics, not model predictions. The constants are centralized in `incidents/intelligence.py` (`MATCH_WINDOW_DAYS`, `MATCH_RADIUS_KM`, `DUPLICATE_THRESHOLD`, and signal weights).
+
+Severity is a 0–100 heuristic: 20 base points, up to 25 points for additional reports (5 each), 5/12/22/30 points for the highest final or suggested priority (LOW/MEDIUM/HIGH/CRITICAL), up to 10 points for persistence over seven days, and 5 points when a location is available. The result and factor breakdown are returned by `calculate_incident_severity` and the numeric score is stored in the existing `Incident.severity_score`. It never changes priority or any other admin-controlled field.
+
+Matching and association run within the Issue creation transaction. Matching/update work has a nested savepoint; an unexpected intelligence exception rolls back a partial match and creates a separate Incident instead. This favors a possible duplicate Incident over a silent false merge and keeps a valid citizen submission from failing. AI provider calls still happen before database writes and continue to use the existing validated deterministic fallback. No REST endpoint or template redesign was added.
 
 The citizen routes filter issue queries by `reported_by=request.user`. Incident detail is available only when the requested Incident is associated with one of that user's Issues. These views are read-only; classification and status changes remain outside the citizen workflow.
 
@@ -180,7 +186,7 @@ Images are validated as JPEG, PNG, GIF, or WebP and capped at 5 MB. Coordinates 
 | 2 | Core data model + auth foundation | ✅ Complete |
 | 3 | Citizen reporting + auth views | ✅ Complete |
 | 4 | AI Smart Triage | ✅ Complete |
-| 5 | Incident aggregation + severity | 🔜 |
+| 5 | Incident aggregation + severity | ✅ Complete |
 | 6 | Admin dashboard views | 🔜 |
 | 7 | Testing, deployment | 🔜 |
 

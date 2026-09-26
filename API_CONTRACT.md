@@ -26,13 +26,16 @@ An **Incident** is the underlying civic problem that administrators manage and r
 - Resolution information (status, notes, resolved_at) belongs to Incident — NOT to Issue
 - Administrators are responsible for transitioning Incident status
 
-### Phase 3 and Phase 4 behavior
+### Phase 3, Phase 4, and Phase 5 behavior
 
 - `accounts:register` creates a CITIZEN account only; self-selected roles are ignored.
 - `issues:create` is available to authenticated users and takes `title`, `description`, optional `image`, `latitude`, and `longitude`. The reporter is always the session user.
-- Each submitted Issue creates a new Incident with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1`.
-- The Issue is linked to that Incident and an initial `REPORTED` status history record is created in the same database transaction.
-- Each submitted Issue currently creates a new Incident; Phase 4 does not perform duplicate detection or incident aggregation.
+- Each submitted Issue is compared with active Incidents created in the previous 30 days using deterministic category, location, text, and recency signals.
+- A concrete non-`Other` category match and a score of at least `0.60` are required to associate a report with an existing Incident. Nearby coordinates (within 0.5 km) and text similarity contribute to the explainable score; missing coordinates provide no proximity evidence.
+- If a qualifying match exists, the Issue is linked to that Incident. Otherwise, a new Incident is created with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1`.
+- A new Incident gets an initial `REPORTED` status history record in the same database transaction. Matching an existing Incident does not change its status or create a status transition.
+- Aggregation recalculates report count, representative coordinates, and severity. Incident category, priority, department, assignment, and status remain administrator-controlled and are not overwritten by AI suggestions or aggregation.
+- An unexpected failure in incident intelligence falls back to a separate Incident within the existing transaction, avoiding a speculative merge and keeping the Issue submission available.
 - Citizens can access their own reports and an Incident only when it is associated with one of their reports. Incident status and classification are read-only in citizen routes.
 - Issue images are limited to JPEG, PNG, GIF, or WebP and 5 MB.
 - Before the database transaction begins, `ai_engine` analyzes the title, description, and optional image. Its validated recommendations are saved to the Issue's existing AI fields.
@@ -76,7 +79,7 @@ An **Incident** is the underlying civic problem that administrators manage and r
 | `assigned_to` | FK → User | Admin user |
 | `latitude` | decimal | Representative location |
 | `longitude` | decimal | Representative location |
-| `severity_score` | float | Reserved for future severity logic; not populated in Phase 3 |
+| `severity_score` | float | Deterministic 0–100 severity heuristic; does not override admin decisions |
 | `report_count` | int | Count of linked Issues |
 | `resolution_notes` | text | |
 | `resolved_at` | datetime | Set when status = RESOLVED |

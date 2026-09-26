@@ -1,18 +1,25 @@
+import logging
+
 from django.db import transaction
 
 from ai_engine.validators import validate_triage_result
 from incidents.models import Incident, IncidentStatus, IncidentStatusHistory
+from incidents.intelligence import find_related_incident
+from incidents.services import update_incident_intelligence
 
 from .models import Department
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
 def create_issue_with_incident(*, issue, reported_by, triage_result=None):
-    """Save a triaged report and its current one-report incident atomically.
+    """Save a triaged report and associate it with a matching/new incident.
 
     The triage provider runs before this transaction. The Issue stores its AI
-    recommendation, while the Incident retains the Phase 3 administrator-facing
-    defaults until a later phase implements review and association workflows.
+    recommendation, while final incident classification remains administrator-
+    controlled. Matching failures roll back to a savepoint and use a new
+    standalone incident so an uncertain report is never silently merged.
     """
     if triage_result is not None:
         triage_result = validate_triage_result(triage_result)
@@ -26,25 +33,49 @@ def create_issue_with_incident(*, issue, reported_by, triage_result=None):
     issue.reported_by = reported_by
     issue.save()
 
-    department, _ = Department.objects.get_or_create(name="General")
-    incident = Incident.objects.create(
-        title=issue.title,
-        category="Other",
-        priority="MEDIUM",
-        status=IncidentStatus.REPORTED,
-        department=department,
-        latitude=issue.latitude,
-        longitude=issue.longitude,
-        report_count=1,
-    )
-    issue.incident = incident
-    issue.save(update_fields=("incident", "updated_at"))
+    matched_incident = None
+    try:
+        # A savepoint makes unexpected query/scoring/update failures recoverable
+        # without leaving a partial association or a broken outer transaction.
+        with transaction.atomic():
+            match = find_related_incident(issue)
+            if match is not None:
+                matched_incident = match.incident
+                issue.incident = matched_incident
+                issue.save(update_fields=("incident", "updated_at"))
+                update_incident_intelligence(matched_incident)
+    except Exception:
+        logger.exception("Incident matching failed; creating a separate incident for issue %s", issue.pk)
+        matched_incident = None
 
-    IncidentStatusHistory.objects.create(
-        incident=incident,
-        old_status="",
-        new_status=IncidentStatus.REPORTED,
-        comment="Incident created from a citizen report.",
-        changed_by=reported_by,
-    )
+    if matched_incident is None:
+        department, _ = Department.objects.get_or_create(name="General")
+        matched_incident = Incident.objects.create(
+            title=issue.title,
+            category="Other",
+            priority="MEDIUM",
+            status=IncidentStatus.REPORTED,
+            department=department,
+            latitude=issue.latitude,
+            longitude=issue.longitude,
+            report_count=1,
+        )
+        issue.incident = matched_incident
+        issue.save(update_fields=("incident", "updated_at"))
+
+        IncidentStatusHistory.objects.create(
+            incident=matched_incident,
+            old_status="",
+            new_status=IncidentStatus.REPORTED,
+            comment="Incident created from a citizen report.",
+            changed_by=reported_by,
+        )
+        # Severity is useful intelligence, but a calculation failure must not
+        # discard the citizen's otherwise-valid report.
+        try:
+            with transaction.atomic():
+                update_incident_intelligence(matched_incident)
+        except Exception:
+            logger.exception("Severity update failed for new incident %s", matched_incident.pk)
+
     return issue
