@@ -19,7 +19,7 @@ structured civic incidents using AI and location-based intelligence.
 ## Core Workflow
 
 Citizen Report
-→ AI Triage
+→ AI Triage Recommendation
 → Duplicate Detection
 → Incident Aggregation
 → Prioritization
@@ -53,7 +53,19 @@ Citizen Report
 
 ## Project Status
 
-Development begins during the 36-hour hackathon.
+Phases 1–3 are complete. Phase 4 implements AI Smart Triage: category,
+priority, department, summary, and confidence are stored as recommendations
+on each Issue. Administrators retain final authority over Incident
+classification and department. If the provider is unavailable or returns
+invalid output, a deterministic keyword fallback keeps report submission
+working.
+
+Duplicate detection, incident aggregation, severity scoring, admin workflow,
+maps, analytics, and deployment are not implemented yet.
+
+The Gemini provider uses the server-side `AI_API_KEY`, `AI_MODEL`, and
+`AI_TIMEOUT_SECONDS` settings. Provider integration is isolated in
+`ai_engine`; credentials are never sent to browser code.
 
 ## Team
 

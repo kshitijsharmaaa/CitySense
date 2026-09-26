@@ -144,19 +144,27 @@ media/             → User-uploaded images (gitignored)
 
 ### AI Integration Rules
 
-- AI calls live exclusively in the `ai_engine` app
+- AI orchestration lives in `ai_engine.services`; Google-specific calls live behind the `ai_engine.providers` adapter
+- The current integration uses the Google Gen AI Python SDK (`google-genai`) and `AI_MODEL`
+- `AI_API_KEY` is read server-side only; `AI_TIMEOUT_SECONDS` bounds each provider request (default 8 seconds, capped at 30 seconds, one attempt)
 - All AI output must be validated before use
 - AI failure must NOT block issue creation (deterministic fallback required)
 - API key read from `AI_API_KEY` env var — never hardcoded
 - AI suggestions stored on `Issue` — final values live on `Incident`
+- The prompt restricts output to the allowed category, priority, and department enums and requests JSON only
+- Provider output is strictly checked for structure, enum values, a non-empty summary, and finite confidence in `[0, 1]`
+- Keyword fallback uses explicit civic terms and high-risk terms; unknown reports use `Other`, `General`, and `MEDIUM`
+- Provider calls happen before the database transaction; validated AI or fallback values are written atomically with the Issue, Incident, link, and initial history
 
 ---
 
-### Phase 3 report creation
+### Phase 3/4 report creation
 
-`issues.services.create_issue_with_incident` owns the Phase 3 transaction. It saves the citizen's Issue, creates a separate Incident using `Other`, `MEDIUM`, `REPORTED`, and the `General` department, links the Issue, and writes the initial `REPORTED` status history entry. If any of these writes fails, the transaction rolls back.
+`issues.views.create` validates the submission and calls `ai_engine.services.triage_issue` before beginning a database transaction. The provider receives the title, description, and optional image, with a bounded request timeout. Missing credentials, provider exceptions, timeouts, malformed JSON, and invalid output return deterministic fallback values.
 
-**Phase 3 creates a new Incident for each submitted Issue because AI classification and duplicate/incident aggregation are Phase 4/5 features.** The service boundary is where the later classification and duplicate-association decision can replace the stub. No AI calls or duplicate detection run in this phase.
+`issues.services.create_issue_with_incident` owns the atomic database writes. It stores the validated recommendations in the existing Issue AI fields, creates a separate Incident using the existing `Other`, `MEDIUM`, `REPORTED`, and `General` defaults, links the Issue, and writes the initial `REPORTED` status history entry. The Incident's final category, priority, and department are not overwritten by AI suggestions.
+
+**Each submitted Issue still creates a new Incident.** Phase 4 does not implement duplicate detection, incident clustering/aggregation, or severity scoring. AI fields are recommendations available through the existing Issue context; no REST endpoint or template redesign was added.
 
 The citizen routes filter issue queries by `reported_by=request.user`. Incident detail is available only when the requested Incident is associated with one of that user's Issues. These views are read-only; classification and status changes remain outside the citizen workflow.
 
@@ -171,7 +179,7 @@ Images are validated as JPEG, PNG, GIF, or WebP and capped at 5 MB. Coordinates 
 | 1 | Django foundation scaffold | ✅ Complete |
 | 2 | Core data model + auth foundation | ✅ Complete |
 | 3 | Citizen reporting + auth views | ✅ Complete |
-| 4 | AI triage + duplicate detection | 🔜 |
+| 4 | AI Smart Triage | ✅ Complete |
 | 5 | Incident aggregation + severity | 🔜 |
 | 6 | Admin dashboard views | 🔜 |
 | 7 | Testing, deployment | 🔜 |

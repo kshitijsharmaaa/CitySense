@@ -14,6 +14,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from io import BytesIO
 from PIL import Image
@@ -122,6 +123,7 @@ class IssueTests(TestCase):
         self.assertIn("Broken Pipe", str(issue))
 
 
+@override_settings(AI_API_KEY="")
 class CitizenIssueWorkflowTests(TestCase):
     def setUp(self):
         self.citizen = User.objects.create_user(

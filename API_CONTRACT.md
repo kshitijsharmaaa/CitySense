@@ -26,15 +26,18 @@ An **Incident** is the underlying civic problem that administrators manage and r
 - Resolution information (status, notes, resolved_at) belongs to Incident — NOT to Issue
 - Administrators are responsible for transitioning Incident status
 
-### Phase 3 behavior
+### Phase 3 and Phase 4 behavior
 
 - `accounts:register` creates a CITIZEN account only; self-selected roles are ignored.
 - `issues:create` is available to authenticated users and takes `title`, `description`, optional `image`, `latitude`, and `longitude`. The reporter is always the session user.
 - Each submitted Issue creates a new Incident with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1`.
 - The Issue is linked to that Incident and an initial `REPORTED` status history record is created in the same database transaction.
-- **Phase 3 creates a new Incident for each submitted Issue because AI classification and duplicate/incident aggregation are Phase 4/5 features.**
+- Each submitted Issue currently creates a new Incident; Phase 4 does not perform duplicate detection or incident aggregation.
 - Citizens can access their own reports and an Incident only when it is associated with one of their reports. Incident status and classification are read-only in citizen routes.
 - Issue images are limited to JPEG, PNG, GIF, or WebP and 5 MB.
+- Before the database transaction begins, `ai_engine` analyzes the title, description, and optional image. Its validated recommendations are saved to the Issue's existing AI fields.
+- AI recommendations never set Incident category, priority, or department. The Phase 3 Incident defaults remain `Other`, `MEDIUM`, `General`, and `REPORTED` for administrator review.
+- Missing credentials, timeout/provider errors, malformed JSON, or invalid values use the deterministic fallback classifier. Report submission and Incident creation continue.
 
 ---
 
@@ -155,11 +158,11 @@ Seeded departments: Road Maintenance, Sanitation, Electrical, Water Supply, Drai
 
 ---
 
-## Future AI Analysis Response Shape
+## AI Smart Triage Fields Available to Templates
 
-This describes a future AI pipeline contract. Phase 3 does not call an AI service or write AI suggestions.
+The existing server-rendered issue detail context includes the `Issue` instance as `issue`; templates can read its AI recommendation fields directly. No REST/JSON endpoint is used for this workflow.
 
-The AI pipeline returns (or falls back to deterministic defaults):
+The provider returns (or the deterministic classifier supplies) this validated structure:
 
 ```json
 {
@@ -172,4 +175,9 @@ The AI pipeline returns (or falls back to deterministic defaults):
 ```
 
 AI output is validated before being stored on the Issue.
+The fields mean **AI Suggested**, not final administrator decisions: `ai_category`, `ai_priority`, `ai_department`, `ai_summary`, and `ai_confidence` (0.0 to 1.0).
+
+The fallback uses keyword matching to suggest a category and department, defaults priority to `MEDIUM`, and raises priority for explicit high-risk terms. Unknown reports use `Other` / `General`. Fallback confidence is `0.55` for a recognized category and `0.2` for `Other`.
+
+The Gemini API key remains server-side in `AI_API_KEY`; `AI_MODEL` and `AI_TIMEOUT_SECONDS` configure the provider. The provider adapter is isolated in `ai_engine/providers.py`. Provider calls run before the Issue/Incident transaction. If AI fails, validated fallback values are saved and report submission continues.
 AI failure must NOT prevent issue creation — fallback values are used instead.

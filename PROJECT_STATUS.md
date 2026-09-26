@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-PHASE 3 IMPLEMENTED — Citizen Reporting Workflow (verification pending)
+PHASE 4 IMPLEMENTED — AI Smart Triage (verified)
 
 ## Completed
 
@@ -38,15 +38,20 @@ PHASE 3 IMPLEMENTED — Citizen Reporting Workflow (verification pending)
 - [x] **Phase 3**: Issue and Incident creation plus initial status history are transactional
 - [x] **Phase 3**: Citizen-scoped incident details and read-only status history
 - [x] **Phase 3**: Minimal functional templates for the citizen workflow
-- [x] **Phase 3**: Phase 3 test coverage added; execution pending a working local Pillow install
+- [x] **Phase 3**: Phase 3 test coverage added and passing
+- [x] **Phase 4**: Gemini smart triage through the `ai_engine` provider boundary
+- [x] **Phase 4**: Validated AI category, priority, department, summary, and confidence recommendations on Issues
+- [x] **Phase 4**: Deterministic keyword fallback for missing credentials, provider errors/timeouts, malformed JSON, and invalid output
+- [x] **Phase 4**: AI calls run before the atomic Issue/Incident write; Incident values remain administrator-controlled
 
 ## Verification
 
-The current MSYS Python 3.14 environment could not build Pillow, which is required by Django `ImageField`. As a result, `manage.py check` and `manage.py test` stop during app loading. Re-run both commands in an environment with the declared dependencies installed before treating Phase 3 as verified.
+- `python manage.py check` — PASS (0 issues)
+- `python manage.py test` — PASS (68 tests)
+- Verification used the project venv with process-local `DEBUG=False` because the inherited shell `DEBUG=release` value is not a valid Django boolean.
 
-## Not Started
+## Future Work
 
-- [ ] AI triage integration
 - [ ] Duplicate detection
 - [ ] Incident aggregation
 - [ ] Severity scoring
@@ -57,6 +62,6 @@ The current MSYS Python 3.14 environment could not build Pillow, which is requir
 
 ## Next Milestone
 
-Phase 4 — AI triage and duplicate detection. These are not part of the current implementation.
+Phase 5 — duplicate detection and incident aggregation. These are not implemented yet.
 
-Phase 3 intentionally creates a new Incident for each submitted Issue because AI classification and duplicate/incident aggregation are Phase 4/5 features.
+Phase 4 continues to create a new Incident for each submitted Issue; AI suggestions remain on the Issue until an administrator reviews them.
