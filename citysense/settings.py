@@ -157,7 +157,7 @@ AUTH_USER_MODEL = "accounts.CitySenseUser"
 # ---------------------------------------------------------------------------
 AI_API_KEY = config("AI_API_KEY", default="")
 AI_MODEL = config("AI_MODEL", default="gemini-3.8-flash")
-AI_TIMEOUT_SECONDS = config("AI_TIMEOUT_SECONDS", default=8, cast=int)
+AI_TIMEOUT_SECONDS = config("AI_TIMEOUT_SECONDS", default=20, cast=int)
 
 # ---------------------------------------------------------------------------
 # LOGIN / AUTH REDIRECTS (placeholder — wired up in accounts phase)
