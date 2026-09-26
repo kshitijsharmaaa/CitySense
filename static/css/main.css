@@ -489,3 +489,23 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.5rem;
   margin-bottom: 1rem;
 }
+
+
+/* --------------------------------------------------------------------------
+   Complaint progress tracker
+   -------------------------------------------------------------------------- */
+.cs-progress-wrap{border:1px solid var(--cs-border);border-radius:var(--cs-radius-md);background:var(--cs-bg-card);padding:1rem}
+.cs-progress-tracker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem;margin:0;padding:0;list-style:none}
+.cs-progress-step{position:relative;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--cs-text-muted);font-size:.8rem}
+.cs-progress-step:before{position:absolute;z-index:0;top:.8rem;left:0;width:100%;height:2px;background:var(--cs-border);content:""}
+.cs-progress-step:first-child:before{left:50%;width:50%}
+.cs-progress-step:last-child:before{width:50%}
+.cs-progress-marker{position:relative;z-index:1;display:grid;width:1.65rem;height:1.65rem;place-items:center;border:2px solid var(--cs-border-dark);border-radius:50%;background:var(--cs-bg-card);color:var(--cs-text-muted);font-size:.72rem;font-weight:700}
+.cs-progress-step.is-complete{color:var(--cs-text-heading)}
+.cs-progress-step.is-complete:before{background:var(--cs-success,#16a34a)}
+.cs-progress-step.is-complete .cs-progress-marker{border-color:var(--cs-success,#16a34a);background:var(--cs-success,#16a34a);color:#fff}
+.cs-progress-step.is-current{color:var(--cs-primary);font-weight:700}
+.cs-progress-step.is-current .cs-progress-marker{border-color:var(--cs-primary);background:var(--cs-primary);color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+.cs-progress-step.is-pending .cs-progress-marker{background:var(--cs-bg-alt)}
+.cs-progress-time{display:block;font-size:.68rem;font-weight:400;color:var(--cs-text-muted)}
+@media(max-width:575.98px){.cs-progress-wrap{padding:.85rem .55rem}.cs-progress-tracker{gap:.15rem}.cs-progress-step{font-size:.68rem;line-height:1.2}.cs-progress-marker{width:1.4rem;height:1.4rem}.cs-progress-step:before{top:.68rem}}

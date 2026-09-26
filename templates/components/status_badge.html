@@ -1,35 +1,29 @@
-{% comment %}
-Reusable Status Badge Component
-Usage: {% include "components/status_badge.html" with status=issue.status %}
-Supported values: REPORTED, VERIFIED, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED
-{% endcomment %}
-
 {% if status == "REPORTED" %}
-  <span class="cs-badge badge-status-reported" title="Issue newly reported by citizen">
-    <i class="bi bi-circle-fill" style="font-size: 0.45rem;"></i> Reported
+  <span class="cs-badge badge-status-reported" title="Your report has been received">
+    <i class="bi bi-circle-fill" style="font-size: 0.45rem;"></i> Report received
   </span>
 {% elif status == "VERIFIED" %}
-  <span class="cs-badge badge-status-verified" title="AI / Admin verified issue validity">
+  <span class="cs-badge badge-status-verified" title="The incident has been reviewed">
     <i class="bi bi-patch-check-fill"></i> Verified
   </span>
 {% elif status == "ASSIGNED" %}
-  <span class="cs-badge badge-status-assigned" title="Assigned to municipal department">
-    <i class="bi bi-person-badge"></i> Assigned
+  <span class="cs-badge badge-status-assigned" title="A department has been asked to respond">
+    <i class="bi bi-person-badge"></i> Assigned to department
   </span>
 {% elif status == "IN_PROGRESS" %}
-  <span class="cs-badge badge-status-in_progress" title="Work actively underway by response team">
-    <i class="bi bi-gear-wide-connected"></i> In Progress
+  <span class="cs-badge badge-status-in_progress" title="A response team is working on the issue">
+    <i class="bi bi-gear-wide-connected"></i> Work in progress
   </span>
 {% elif status == "RESOLVED" %}
   <span class="cs-badge badge-status-resolved" title="Issue successfully resolved">
     <i class="bi bi-check-circle-fill"></i> Resolved
   </span>
 {% elif status == "REJECTED" %}
-  <span class="cs-badge badge-status-rejected" title="Issue rejected or marked invalid">
-    <i class="bi bi-x-circle-fill"></i> Rejected
+  <span class="cs-badge badge-status-rejected" title="The report was reviewed and will not move forward">
+    <i class="bi bi-x-circle-fill"></i> Closed / Not approved
   </span>
 {% else %}
   <span class="cs-badge badge-status-reported">
-    <i class="bi bi-info-circle"></i> {{ status|default:"Pending" }}
+    <i class="bi bi-info-circle"></i> Status update
   </span>
 {% endif %}

@@ -20,6 +20,7 @@ from datetime import timedelta
 from issues.models import Category, Department, Issue, Priority
 from .intelligence import calculate_incident_severity
 from .models import Incident, IncidentStatus, IncidentStatusHistory
+from .presentation import PRIORITY_AGE_LIMITS, complaint_age, complaint_progress
 
 User = get_user_model()
 
@@ -366,6 +367,13 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertEqual(history[1].old_status, IncidentStatus.REPORTED)
         self.assertEqual(history[1].new_status, IncidentStatus.VERIFIED)
 
+    def test_citizen_never_sees_admin_reopen_control(self):
+        self.client.force_login(self.citizen)
+        response = self.client.get(reverse("incidents:detail", args=(self.incident.pk,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Reopen case")
+        self.assertNotContains(response, "Save review")
+
     def test_resolution_records_notes_timestamp_and_status_history(self):
         self.client.force_login(self.admin)
         response = self.client.post(
@@ -408,6 +416,50 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertEqual(self.incident.issues.count(), 1)
         self.assertFalse(self.incident.status_history.exists())
 
+    def test_admin_detail_shows_resolve_action_only_while_work_is_active(self):
+        self.incident.status = IncidentStatus.IN_PROGRESS
+        self.incident.save()
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.assertContains(response, "Mark Resolved")
+        self.assertNotContains(response, "Reopen case")
+
+    def test_admin_reopen_control_uses_existing_transition_and_preserves_history(self):
+        self.incident.status = IncidentStatus.RESOLVED
+        self.incident.resolution_notes = "Repair was completed."
+        self.incident.resolved_at = timezone.now()
+        self.incident.save()
+        IncidentStatusHistory.objects.create(
+            incident=self.incident,
+            old_status=IncidentStatus.IN_PROGRESS,
+            new_status=IncidentStatus.RESOLVED,
+            changed_by=self.admin,
+            comment="Repair checked.",
+        )
+        self.client.force_login(self.admin)
+        url = reverse("incidents:admin_detail", args=(self.incident.pk,))
+        page = self.client.get(url)
+        self.assertContains(page, "Reopen case")
+        self.assertContains(page, "Reopen this case?")
+        response = self.client.post(url, self.post_data(
+            status=IncidentStatus.IN_PROGRESS,
+            resolution_notes="Repair was completed.",
+            status_comment="The issue has returned.",
+        ))
+        self.assertRedirects(response, url)
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.status, IncidentStatus.IN_PROGRESS)
+        self.assertIsNone(self.incident.resolved_at)
+        self.assertEqual(self.incident.resolution_notes, "Repair was completed.")
+        self.assertEqual(self.incident.status_history.count(), 2)
+        self.assertEqual(
+            self.incident.status_history.first().new_status, IncidentStatus.IN_PROGRESS
+        )
+        active_reports = self.client.get(reverse("issues:list"))
+        self.assertEqual(list(active_reports.context["issues"]), [self.issue])
+        resolved_reports = self.client.get(reverse("issues:list"), {"status": IncidentStatus.RESOLVED})
+        self.assertEqual(list(resolved_reports.context["issues"]), [])
+
     def test_reopening_incident_clears_current_resolved_timestamp_but_keeps_notes(self):
         self.incident.status = IncidentStatus.RESOLVED
         self.incident.resolution_notes = "Resolved repair details"
@@ -429,3 +481,74 @@ class AdminIncidentWorkflowTests(TestCase):
         history = self.incident.status_history.get()
         self.assertEqual(history.old_status, IncidentStatus.RESOLVED)
         self.assertEqual(history.new_status, IncidentStatus.IN_PROGRESS)
+
+
+class IncidentPresentationTests(TestCase):
+    def test_priority_age_states_use_configured_thresholds(self):
+        now = timezone.now()
+        for priority, threshold in PRIORITY_AGE_LIMITS.items():
+            with self.subTest(priority=priority):
+                on_track = complaint_age(
+                    now - threshold / 2, priority,
+                    status=IncidentStatus.IN_PROGRESS, now=now,
+                )
+                due_soon = complaint_age(
+                    now - threshold * 0.8, priority,
+                    status=IncidentStatus.IN_PROGRESS, now=now,
+                )
+                overdue = complaint_age(
+                    now - threshold - timedelta(days=2), priority,
+                    status=IncidentStatus.IN_PROGRESS, now=now,
+                )
+                self.assertEqual(on_track["state"], "on_track")
+                self.assertEqual(on_track["attention_text"], "On track")
+                self.assertEqual(due_soon["state"], "due_soon")
+                self.assertEqual(due_soon["attention_text"], "Due soon")
+                self.assertEqual(overdue["state"], "overdue")
+                self.assertIn("Overdue by 2 days", overdue["attention_text"])
+
+    def test_progress_marks_only_history_evidenced_stages_complete(self):
+        incident = Incident.objects.create(
+            title="History-backed progress", status=IncidentStatus.IN_PROGRESS,
+        )
+        now = timezone.now()
+        history = [
+            IncidentStatusHistory.objects.create(
+                incident=incident, old_status=IncidentStatus.REPORTED,
+                new_status=IncidentStatus.VERIFIED, created_at=now - timedelta(hours=2),
+            ),
+            IncidentStatusHistory.objects.create(
+                incident=incident, old_status=IncidentStatus.VERIFIED,
+                new_status=IncidentStatus.IN_PROGRESS, created_at=now - timedelta(hours=1),
+            ),
+        ]
+        progress = complaint_progress(IncidentStatus.IN_PROGRESS, history)
+        by_status = {step["status"]: step for step in progress["steps"]}
+        self.assertTrue(by_status[IncidentStatus.REPORTED]["is_complete"])
+        self.assertTrue(by_status[IncidentStatus.VERIFIED]["is_complete"])
+        self.assertTrue(by_status[IncidentStatus.IN_PROGRESS]["is_current"])
+        self.assertFalse(by_status[IncidentStatus.ASSIGNED]["is_complete"])
+        self.assertIsNone(by_status[IncidentStatus.REPORTED]["occurred_at"])
+        self.assertEqual(
+            by_status[IncidentStatus.VERIFIED]["occurred_at"],
+            history[0].created_at,
+        )
+
+    def test_progress_without_history_shows_only_known_current_stage(self):
+        progress = complaint_progress(IncidentStatus.IN_PROGRESS, [])
+        self.assertTrue(progress["steps"][3]["is_current"])
+        self.assertFalse(any(step["is_complete"] for step in progress["steps"]))
+        self.assertIsNone(progress["latest_update"])
+
+    def test_rejected_case_uses_separate_terminal_progress_state(self):
+        incident = Incident.objects.create(
+            title="Closed case", status=IncidentStatus.REJECTED,
+        )
+        event = IncidentStatusHistory.objects.create(
+            incident=incident, old_status=IncidentStatus.REPORTED,
+            new_status=IncidentStatus.REJECTED, comment="Duplicate submission.",
+        )
+        progress = complaint_progress(IncidentStatus.REJECTED, [event])
+        self.assertTrue(progress["is_closed"])
+        self.assertEqual(progress["closed_note"], "Duplicate submission.")
+        self.assertEqual(progress["steps"], [])

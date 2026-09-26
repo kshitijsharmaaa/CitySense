@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="CitySense is an AI-assisted civic issue intelligence and resolution platform transforming citizen reports into prioritized, actionable civic incidents.">
-  <title>{% block title %}CitySense | AI-Assisted Civic Intelligence & Resolution Platform{% endblock %}</title>
+  <meta name="description" content="Report local problems, follow their progress, and see how your community is responding.">
+  <title>{% block title %}CitySense | Report a Local Problem{% endblock %}</title>
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,31 +55,34 @@
             <span>CitySense</span>
           </div>
           <p class="small text-muted-cs mb-3 max-w-sm">
-            AI-assisted civic issue intelligence and resolution platform. Transforming unstructured reports into actionable, aggregated civic incidents.
+            Report local problems and follow their progress as response teams work toward a resolution.
           </p>
           <div class="d-flex gap-2">
-            <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary">36-Hour Hackathon Build</span>
-            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary">v1.0 Foundation</span>
+            <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary">Community service</span>
+            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary">CitySense</span>
           </div>
         </div>
         <div class="col-6 col-lg-3">
-          <h5 class="text-white fs-6 mb-3">Core Platform</h5>
+          <h5 class="text-white fs-6 mb-3">Explore CitySense</h5>
           <ul class="list-unstyled mb-0 d-flex flex-column gap-2 small">
-            <li><a href="#hero">Report a Civic Issue</a></li>
-            <li><a href="#workflow">AI Incident Intelligence</a></li>
-            <li><a href="#components">UI Component Specs</a></li>
-            <li><a href="#categories">Civic Categories</a></li>
+            {% if request.user.is_authenticated and request.user.is_admin_user %}
+              <li><a href="{% url 'issues:list' %}">Review reports</a></li>
+              <li><a href="{% url 'incidents:admin_dashboard' %}">Manage incidents</a></li>
+              <li><a href="{% url 'dashboard:index' %}">View dashboard</a></li>
+              <li><a href="{% url 'issues:create' %}">Submit a report</a></li>
+            {% else %}
+              <li><a href="{% url 'home' %}#hero">Report a problem</a></li>
+              <li><a href="{% url 'home' %}#workflow">How it works</a></li>
+              <li><a href="{% url 'home' %}#workflow">Report updates</a></li>
+              <li><a href="{% url 'home' %}#categories">Problems you can report</a></li>
+            {% endif %}
           </ul>
         </div>
         <div class="col-6 col-lg-4">
-          <h5 class="text-white fs-6 mb-3">Architecture & Ownership</h5>
+          <h5 class="text-white fs-6 mb-3">Working together</h5>
           <p class="small text-muted-cs mb-2">
-            Built as a modular Django monolith using Django Templates, Bootstrap 5, Vanilla JavaScript, Leaflet, and Chart.js.
+            CitySense helps residents and response teams turn local reports into coordinated action.
           </p>
-          <div class="small text-white-50">
-            <div><i class="bi bi-person-fill me-1"></i> <strong>Palak:</strong> Frontend & UX Owner</div>
-            <div><i class="bi bi-cpu-fill me-1"></i> <strong>Kshitij:</strong> Backend & Intelligence Owner</div>
-          </div>
         </div>
       </div>
       <hr class="my-4 border-secondary opacity-25">

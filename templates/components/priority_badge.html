@@ -1,27 +1,21 @@
-{% comment %}
-Reusable Priority Badge Component
-Usage: {% include "components/priority_badge.html" with priority=issue.priority %}
-Supported values: LOW, MEDIUM, HIGH, CRITICAL
-{% endcomment %}
-
 {% if priority == "CRITICAL" %}
   <span class="cs-badge badge-priority-critical" title="Urgent safety or infrastructure hazard">
-    <i class="bi bi-exclamation-octagon-fill"></i> Critical
+    <i class="bi bi-exclamation-octagon-fill"></i> Critical priority
   </span>
 {% elif priority == "HIGH" %}
   <span class="cs-badge badge-priority-high" title="High priority response required">
-    <i class="bi bi-arrow-up-circle-fill"></i> High
+    <i class="bi bi-arrow-up-circle-fill"></i> High priority
   </span>
 {% elif priority == "MEDIUM" %}
   <span class="cs-badge badge-priority-medium" title="Standard priority issue">
-    <i class="bi bi-dash-circle-fill"></i> Medium
+    <i class="bi bi-dash-circle-fill"></i> Medium priority
   </span>
 {% elif priority == "LOW" %}
   <span class="cs-badge badge-priority-low" title="Low priority routine maintenance">
-    <i class="bi bi-arrow-down-circle-fill"></i> Low
+    <i class="bi bi-arrow-down-circle-fill"></i> Low priority
   </span>
 {% else %}
   <span class="cs-badge badge-priority-low">
-    <i class="bi bi-flag"></i> {{ priority|default:"Normal" }}
+    <i class="bi bi-flag"></i> Priority not set
   </span>
 {% endif %}

@@ -8,8 +8,8 @@ Usage:
   <div class="cs-empty-icon">
     <i class="bi {{ icon|default:'bi-folder2-open' }}"></i>
   </div>
-  <h4 class="h5 font-weight-bold mb-2">{{ title|default:"No Data Available" }}</h4>
-  <p class="text-muted-cs mb-4 max-w-md mx-auto">{{ message|default:"Nothing to display at this moment. Check back later or create a new entry." }}</p>
+  <h4 class="h5 font-weight-bold mb-2">{{ title|default:"Nothing to show yet" }}</h4>
+  <p class="text-muted-cs mb-4 max-w-md mx-auto">{{ message|default:"There is nothing here yet. Check back later or report a local problem." }}</p>
   {% if action_text %}
     <a href="{{ action_url|default:'#' }}" class="btn btn-cs-primary btn-sm d-inline-flex align-items-center gap-1">
       <i class="bi bi-plus-circle"></i> {{ action_text }}

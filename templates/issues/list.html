@@ -1,74 +1,120 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}My Reported Issues | CitySense{% endblock %}
+{% block title %}{% if request.user.is_admin_user %}Reports{% else %}My Reports{% endif %} | CitySense{% endblock %}
 
 {% block content %}
 <section class="py-4 py-md-5">
   <div class="container">
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+    <header class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
       <div>
-        <h1 class="h2 fw-bold text-dark mb-1">My Reported Issues</h1>
-        <p class="text-muted-cs mb-0">Track all your submitted civic reports and their associated resolution status.</p>
+        <h1 class="h2 fw-bold text-dark mb-1">{% if request.user.is_admin_user %}Reports{% else %}My Reports{% endif %}</h1>
+        <p class="text-muted-cs mb-0">{% if request.user.is_admin_user %}Search and review reports across the city.{% else %}Keep track of your reports and their current progress.{% endif %}</p>
       </div>
-      <a href="{% url 'issues:create' %}" class="btn btn-cs-primary d-inline-flex align-items-center gap-2">
-        <i class="bi bi-plus-circle"></i> Submit New Report
-      </a>
-    </div>
+      <a href="{% url 'issues:create' %}" class="btn btn-cs-primary d-inline-flex align-items-center gap-2"><i class="bi bi-plus-circle"></i> Submit New Report</a>
+    </header>
+
+    {% if request.user.is_admin_user %}
+      <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4" aria-label="Report totals">
+        <div class="col"><a class="card h-100 border shadow-sm p-3 text-decoration-none" href="{% url 'issues:list' %}"><span class="small text-muted-cs">Total reports</span><strong class="fs-3 text-dark">{{ report_counts.total }}</strong></a></div>
+        <div class="col"><a class="card h-100 border shadow-sm p-3 text-decoration-none" href="{% url 'issues:list' %}"><span class="small text-muted-cs">Open reports</span><strong class="fs-3 text-warning">{{ report_counts.open }}</strong></a></div>
+        <div class="col"><a class="card h-100 border shadow-sm p-3 text-decoration-none" href="?status=ASSIGNED"><span class="small text-muted-cs">Assigned</span><strong class="fs-3 text-primary">{{ report_counts.assigned }}</strong></a></div>
+        <div class="col"><a class="card h-100 border shadow-sm p-3 text-decoration-none" href="?status=IN_PROGRESS"><span class="small text-muted-cs">Work in progress</span><strong class="fs-3 text-primary">{{ report_counts.in_progress }}</strong></a></div>
+        <div class="col"><a class="card h-100 border shadow-sm p-3 text-decoration-none" href="?status=RESOLVED"><span class="small text-muted-cs">Resolved</span><strong class="fs-3 text-success">{{ report_counts.resolved }}</strong></a></div>
+        <div class="col"><a class="card h-100 border shadow-sm p-3 text-decoration-none" href="?status=REJECTED"><span class="small text-muted-cs">Closed / Not approved</span><strong class="fs-3 text-secondary">{{ report_counts.closed }}</strong></a></div>
+      </div>
+
+      <p class="small text-muted-cs mb-2">Age and priority indicators are operational estimates, not an SLA or policy guarantee.</p>
+      <form method="get" class="card border shadow-sm rounded-3 p-3 p-md-4 mb-4" aria-label="Filter reports">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-6 col-xl-4"><label class="form-label fw-semibold" for="{{ filters.search.id_for_label }}">Search</label>{{ filters.search }}</div>
+          <div class="col-12 col-sm-6 col-xl-2"><label class="form-label fw-semibold" for="{{ filters.status.id_for_label }}">Status</label>{{ filters.status }}</div>
+          <div class="col-12 col-sm-6 col-xl-2"><label class="form-label fw-semibold" for="{{ filters.priority.id_for_label }}">Priority</label>{{ filters.priority }}</div>
+          <div class="col-12 col-sm-6 col-xl-2"><label class="form-label fw-semibold" for="{{ filters.category.id_for_label }}">Issue type</label>{{ filters.category }}</div>
+          <div class="col-12 col-sm-6 col-xl-2"><label class="form-label fw-semibold" for="{{ filters.department.id_for_label }}">Department</label>{{ filters.department }}</div>
+          <div class="col-12 col-sm-6 col-xl-3"><label class="form-label fw-semibold" for="{{ filters.assignment.id_for_label }}">Assignment</label>{{ filters.assignment }}</div>
+          <div class="col-12 col-sm-6 col-xl-3"><label class="form-label fw-semibold" for="{{ filters.sort.id_for_label }}">Sort by</label>{{ filters.sort }}</div>
+          <div class="col-12 col-xl-6 d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-cs-primary"><i class="bi bi-funnel me-1"></i> Apply Filters</button>
+            <a href="{% url 'issues:list' %}" class="btn btn-cs-outline">Clear filters</a>
+          </div>
+        </div>
+      </form>
+    {% endif %}
 
     {% if issues %}
       <div class="row g-4">
         {% for issue in issues %}
-          <div class="col-md-6 col-lg-4">
-            <div class="cs-card">
+          <div class="col-md-6 col-xl-4">
+            <article class="cs-card h-100 {% if request.user.is_admin_user and issue.is_high_priority_open %}border border-danger{% endif %}">
               <div class="cs-card-header">
-                <div class="d-flex align-items-center gap-2">
-                  <span class="badge bg-dark text-white font-monospace fs-7">{{ issue.issue_code }}</span>
-                  {% if issue.ai_category %}
-                    <span class="badge bg-light text-dark border">{{ issue.ai_category }}</span>
-                  {% endif %}
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <span class="badge bg-dark text-white font-monospace fs-7">Report ID: {{ issue.issue_code }}</span>
+                  {% if request.user.is_admin_user %}<span class="badge bg-light text-dark border">{{ issue.display_category }}</span>{% elif issue.ai_category %}<span class="badge bg-light text-dark border">{{ issue.get_ai_category_display }}</span>{% endif %}
                 </div>
-                {% if issue.incident %}
-                  {% include "components/status_badge.html" with status=issue.incident.status %}
-                {% else %}
-                  {% include "components/status_badge.html" with status="REPORTED" %}
-                {% endif %}
+                {% if issue.incident %}{% include "components/status_badge.html" with status=issue.incident.status %}{% else %}{% include "components/status_badge.html" with status="REPORTED" %}{% endif %}
               </div>
-
               <div class="cs-card-body">
-                <h3 class="cs-card-title h5">
-                  <a href="{% url 'issues:detail' issue.pk %}" class="text-decoration-none text-dark hover-primary">
-                    {{ issue.title }}
-                  </a>
-                </h3>
+                <h2 class="cs-card-title h5"><a href="{% url 'issues:detail' issue.pk %}" class="text-decoration-none text-dark hover-primary">{{ issue.title }}</a></h2>
                 <p class="cs-card-desc">{{ issue.description }}</p>
 
-                {% if issue.incident %}
-                  <div class="mt-3 p-2 bg-light rounded border d-flex align-items-center justify-content-between text-muted-cs small">
-                    <span>Associated Incident:</span>
-                    <a href="{% url 'incidents:detail' issue.incident.pk %}" class="fw-bold text-primary text-decoration-none">
-                      <i class="bi bi-link-45deg"></i> {{ issue.incident.incident_code }}
-                    </a>
-                  </div>
+                {% if request.user.is_admin_user %}
+                  <div class="d-flex flex-wrap gap-2 align-items-center mb-2">{% include "components/priority_badge.html" with priority=issue.display_priority %}{% if issue.is_unassigned %}<span class="badge text-bg-warning">Needs assignment</span>{% endif %}</div>
+                  <dl class="small mb-2">
+                    <div class="d-flex flex-wrap gap-1"><dt class="text-muted-cs">Assigned Department:</dt><dd class="mb-1">{{ issue.incident.department|default:"Not assigned yet" }}</dd></div>
+                    <div class="d-flex flex-wrap gap-1"><dt class="text-muted-cs">Assigned Staff Member:</dt><dd class="mb-1">{{ issue.incident.assigned_to|default:"Not assigned yet" }}</dd></div>
+                    <div class="d-flex flex-wrap gap-1"><dt class="text-muted-cs">Linked Incident:</dt><dd class="mb-1">{% if issue.incident %}<a href="{% url 'incidents:admin_detail' issue.incident.pk %}">{{ issue.incident.incident_code }}</a>{% else %}No incident linked yet{% endif %}</dd></div>
+                  </dl>
+                  {% if issue.incident.status == "RESOLVED" or issue.incident.status == "REJECTED" %}
+                    <div class="mt-3 p-3 rounded border border-success-subtle bg-success bg-opacity-10 small">
+                      {% if issue.incident.resolution_notes %}<div><strong>Resolution update:</strong> {{ issue.incident.resolution_notes|linebreaksbr }}</div>{% endif %}
+                      {% if issue.incident.resolved_at %}<div class="mt-1"><strong>Date resolved:</strong> {{ issue.incident.resolved_at|date:"M j, Y, g:i A" }}</div>{% endif %}
+                      {% if issue.incident.department %}<div class="mt-1"><strong>Assigned Department:</strong> {{ issue.incident.department.name }}</div>{% endif %}
+                      {% if issue.incident.assigned_to %}<div class="mt-1"><strong>Assigned Staff Member:</strong> {{ issue.incident.assigned_to.name }}</div>{% endif %}
+                    </div>
+                  {% endif %}
+                  {% if issue.age %}<div class="small border-top pt-2"><span class="fw-semibold">{{ issue.age.age_text }}</span><span class="badge ms-1 {% if issue.age.state == 'overdue' %}text-bg-danger{% elif issue.age.state == 'due_soon' %}text-bg-warning{% else %}bg-light text-dark border{% endif %}">{{ issue.age.attention_text }}</span></div>{% endif %}
+                {% elif issue.incident %}
+                  <div class="mt-3 p-2 bg-light rounded border d-flex align-items-center justify-content-between text-muted-cs small"><span>Linked Incident:</span><a href="{% url 'incidents:detail' issue.incident.pk %}" class="fw-bold text-primary text-decoration-none"><i class="bi bi-link-45deg"></i> {{ issue.incident.incident_code }}</a></div>
+                  <div class="small mt-2"><strong>Assigned Department:</strong> {{ issue.incident.department|default:"Not assigned yet" }}</div>
+                  <div class="small mt-1"><strong>Latest update:</strong> {% with latest=issue.incident.status_history.first %}{% if latest.comment %}{{ latest.comment }}{% else %}{% include "components/status_badge.html" with status=issue.incident.status %}{% endif %}{% endwith %}</div>
+                  {% if issue.incident.status == "RESOLVED" and issue.incident.resolution_notes %}
+                    <div class="mt-3 p-3 rounded border border-success-subtle bg-success bg-opacity-10 small"><strong>Resolution update:</strong> {{ issue.incident.resolution_notes|linebreaksbr }}{% if issue.incident.resolved_at %}<div class="mt-1"><strong>Resolved:</strong> {{ issue.incident.resolved_at|date:"M j, Y, g:i A" }}</div>{% endif %}</div>
+                  {% endif %}
                 {% endif %}
               </div>
-
-              <div class="cs-card-footer">
-                <span class="text-muted-cs small">
-                  <i class="bi bi-clock me-1"></i> {{ issue.created_at|date:"M d, Y · H:i" }}
-                </span>
-                <a href="{% url 'issues:detail' issue.pk %}" class="btn btn-cs-outline btn-sm py-1 px-2">
-                  View Report <i class="bi bi-arrow-right ms-1"></i>
-                </a>
+              <div class="cs-card-footer d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted-cs small me-auto"><i class="bi bi-clock me-1"></i>{{ issue.created_at|date:"M d, Y, H:i" }}</span>
+                <a href="{% url 'issues:detail' issue.pk %}" class="btn btn-cs-outline btn-sm py-1 px-2">{% if request.user.is_admin_user %}View Report{% else %}View details{% endif %}</a>
+                {% if request.user.is_admin_user %}
+                  {% if issue.incident %}<a href="{% url 'incidents:admin_detail' issue.incident.pk %}" class="btn btn-cs-outline btn-sm py-1 px-2">Update case</a>{% endif %}
+                  <form method="post" action="{% url 'issues:delete' issue.pk %}" onsubmit="return confirm('Delete this report permanently? This cannot be undone.');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2">Delete Report</button></form>
+                {% endif %}
               </div>
-            </div>
+            </article>
           </div>
         {% endfor %}
       </div>
     {% else %}
-      {% include "components/empty_state.html" with title="No Civic Reports Found" message="You haven't submitted any civic issue reports yet. Report problems in your neighborhood to initiate resolution." icon="bi-inbox" action_text="Report an Issue" action_url="/issues/new/" %}
+      {% if request.user.is_admin_user %}
+        {% if filters.is_bound and filters.data or filter_query %}
+          {% if selected_status == "RESOLVED" %}{% include "components/empty_state.html" with title="No resolved complaints yet." message="Resolved reports remain available here as historical records." icon="bi-check-circle" %}
+          {% else %}{% include "components/empty_state.html" with title="No reports match your filters." message="Try changing or clearing your search and filters." icon="bi-search" %}{% endif %}
+        {% else %}
+          {% include "components/empty_state.html" with title="No reports have been submitted yet." message="New community reports will appear here." icon="bi-inbox" action_text="Submit a Report" action_url="/issues/new/" %}
+        {% endif %}
+      {% else %}
+        {% include "components/empty_state.html" with title="No reports yet" message="When you report a problem, you can follow its progress here." icon="bi-inbox" action_text="Report an Issue" action_url="/issues/new/" %}
+      {% endif %}
     {% endif %}
 
+    {% if request.user.is_admin_user and page_obj.paginator.num_pages > 1 %}
+      <nav class="mt-4" aria-label="Report pages"><ul class="pagination justify-content-center flex-wrap">
+        {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% if filter_query %}{{ filter_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+        <li class="page-item active"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% if filter_query %}{{ filter_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+      </ul></nav>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

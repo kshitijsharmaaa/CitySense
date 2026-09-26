@@ -4,24 +4,37 @@ from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
-from accounts.decorators import admin_required, citizen_required
+from accounts.decorators import admin_required, citizen_or_admin_required
 
 from issues.models import Issue
 
 from .forms import IncidentFilterForm, IncidentReviewForm
 from .models import Incident, IncidentStatusHistory
+from .presentation import complaint_age, complaint_progress
 from .workflow import update_incident_review
 
 
-@citizen_required
+@citizen_or_admin_required
 @require_GET
 def detail(request, pk):
-    incident = get_object_or_404(
-        Incident.objects.select_related("department").prefetch_related("status_history").distinct(),
-        pk=pk,
-        issues__reported_by=request.user,
+    incidents = Incident.objects.select_related("department").prefetch_related(
+        "status_history", "issues"
     )
-    return render(request, "incidents/detail.html", {"incident": incident})
+    if request.user.is_citizen:
+        incidents = incidents.filter(issues__reported_by=request.user)
+    incident = get_object_or_404(incidents.distinct(), pk=pk)
+    history = list(incident.status_history.all())
+    age = complaint_age(incident.created_at, incident.priority, status=incident.status)
+    if request.user.is_citizen and age and age["state"] != "overdue":
+        age = None
+    progress = complaint_progress(incident.status, history)
+    return render(request, "incidents/detail.html", {
+        "incident": incident,
+        "case_progress": progress,
+        "case_age": age,
+        "latest_update": history[0] if history else None,
+        "case_next_action": progress["next_action"],
+    })
 
 
 @admin_required
@@ -83,5 +96,8 @@ def admin_detail(request, pk):
         'incident': incident,
         'issues': incident.issues.all(),
         'status_history': incident.status_history.all(),
+        'case_progress': complaint_progress(incident.status, list(incident.status_history.all())),
+        'case_age': complaint_age(incident.created_at, incident.priority, status=incident.status),
+        'case_next_action': complaint_progress(incident.status, list(incident.status_history.all()))['next_action'],
         'form': form,
     })

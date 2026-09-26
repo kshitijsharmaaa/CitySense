@@ -40,7 +40,7 @@
 
         {% if form.non_field_errors %}
           {% for error in form.non_field_errors %}
-            {% include "components/alert.html" with level="danger" title="Validation Error" message=error dismissible=True %}
+            {% include "components/alert.html" with level="danger" title="Please review your report" message=error dismissible=True %}
           {% endfor %}
         {% endif %}
 
@@ -52,7 +52,7 @@
               <!-- 1. Title -->
               <div class="mb-4">
                 <label for="id_title" class="form-label fw-bold text-dark fs-6">
-                  Issue Title <span class="text-danger">*</span>
+                  Report title <span class="text-danger">*</span>
                 </label>
                 <input type="text" name="title" id="id_title" class="form-control form-control-lg {% if form.title.errors %}is-invalid{% endif %}" placeholder="e.g. Large pothole near central market street" value="{{ form.title.value|default:'' }}" required maxlength="255">
                 {% if form.title.errors %}
@@ -67,7 +67,7 @@
               <!-- 2. Description -->
               <div class="mb-4">
                 <label for="id_description" class="form-label fw-bold text-dark fs-6">
-                  Detailed Description <span class="text-danger">*</span>
+                  What happened <span class="text-danger">*</span>
                 </label>
                 <textarea name="description" id="id_description" rows="5" class="form-control {% if form.description.errors %}is-invalid{% endif %}" placeholder="Provide clear details regarding the problem, exact surroundings, or potential safety hazards..." required>{{ form.description.value|default:'' }}</textarea>
                 {% if form.description.errors %}
@@ -75,14 +75,14 @@
                     {{ form.description.errors.0 }}
                   </div>
                 {% else %}
-                  <div class="form-text text-muted-cs small">AI triage will analyze your text to categorize and prioritize the report.</div>
+                  <div class="form-text text-muted-cs small">CitySense will suggest a problem type, priority, and department based on your description.</div>
                 {% endif %}
               </div>
 
               <!-- 3. Photo Upload -->
               <div class="mb-4">
                 <label for="id_image" class="form-label fw-bold text-dark fs-6">
-                  Photo Attachment <span class="badge bg-light text-muted border ms-1">Optional</span>
+                  Photo <span class="badge bg-light text-muted border ms-1">Optional</span>
                 </label>
                 <input type="file" name="image" id="id_image" class="form-control {% if form.image.errors %}is-invalid{% endif %}" accept="image/jpeg,image/png,image/gif,image/webp">
                 <div id="image-client-error" class="invalid-feedback d-none"></div>
@@ -105,10 +105,10 @@
               <div class="mb-4">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <label class="form-label fw-bold text-dark fs-6 mb-0">
-                    Pin Location on Map <span class="badge bg-light text-muted border ms-1">Optional</span>
+                    Add the location <span class="badge bg-light text-muted border ms-1">Optional</span>
                   </label>
                   <button type="button" id="btn-use-location" class="btn btn-cs-outline btn-sm py-1 px-2">
-                    <i class="bi bi-geo-fill text-danger me-1"></i> Detect My GPS Location
+                    <i class="bi bi-geo-fill text-danger me-1"></i> Use my current location
                   </button>
                 </div>
 
@@ -116,23 +116,23 @@
 
                 <div class="row g-3">
                   <div class="col-6">
-                    <label for="id_latitude" class="form-label small text-muted">Latitude</label>
+                    <label for="id_latitude" class="form-label small text-muted">North–south position</label>
                     <input type="number" step="any" name="latitude" id="id_latitude" class="form-control form-control-sm bg-light" placeholder="e.g. 28.6139" value="{{ form.latitude.value|default:'' }}" readonly>
                   </div>
                   <div class="col-6">
-                    <label for="id_longitude" class="form-label small text-muted">Longitude</label>
+                    <label for="id_longitude" class="form-label small text-muted">East–west position</label>
                     <input type="number" step="any" name="longitude" id="id_longitude" class="form-control form-control-sm bg-light" placeholder="e.g. 77.2090" value="{{ form.longitude.value|default:'' }}" readonly>
                   </div>
                 </div>
                 <div class="form-text text-muted-cs small mt-1">
-                  Click on the map or drag the pin to set the exact coordinates of the issue.
+                  Click the map or move the pin to mark where the problem is.
                 </div>
               </div>
 
               <!-- Submit Button -->
               <div class="d-grid pt-2">
                 <button type="submit" id="submit-report" class="btn btn-cs-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2">
-                  <i class="bi bi-send-fill"></i> Submit Civic Report
+                  <i class="bi bi-send-fill"></i> Submit report
                 </button>
               </div>
             </form>
@@ -226,7 +226,7 @@ document.addEventListener("DOMContentLoaded", function() {
     gpsBtn.addEventListener("click", function() {
       if ("geolocation" in navigator) {
         gpsBtn.disabled = true;
-        gpsBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Locating...';
+        gpsBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Finding your location…';
 
         navigator.geolocation.getCurrentPosition(
           function(position) {
@@ -242,13 +242,13 @@ document.addEventListener("DOMContentLoaded", function() {
           },
           function(error) {
             gpsBtn.disabled = false;
-            gpsBtn.innerHTML = '<i class="bi bi-geo-fill text-danger me-1"></i> Detect My GPS Location';
-            alert("Could not retrieve GPS location: " + error.message);
+            gpsBtn.innerHTML = '<i class="bi bi-geo-fill text-danger me-1"></i> Use my current location';
+            alert("We could not find your location. You can choose a spot on the map instead.");
           },
           { enableHighAccuracy: true, timeout: 10000 }
         );
       } else {
-        alert("Geolocation is not supported by your browser.");
+        alert("Location detection is unavailable in this browser. You can choose a spot on the map instead.");
       }
     });
   }

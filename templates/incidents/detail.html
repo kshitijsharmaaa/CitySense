@@ -1,17 +1,25 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static l10n %}
 
 {% block title %}Incident {{ incident.incident_code }} — {{ incident.title }} | CitySense{% endblock %}
 
 {% block extra_head %}
-{% if incident.latitude and incident.longitude %}
+{% if incident.latitude != None and incident.longitude != None and incident.latitude >= -90 and incident.latitude <= 90 and incident.longitude >= -180 and incident.longitude <= 180 %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  #incident-map {
-    height: 250px;
+  .cs-incident-map {
+    display: block;
+    position: relative;
+    height: 320px;
+    min-height: 320px;
     width: 100%;
+    overflow: hidden;
     border-radius: var(--cs-radius-md);
     border: 1px solid var(--cs-border);
+  }
+  .cs-incident-map[hidden],
+  #incident-map-fallback[hidden] {
+    display: none !important;
   }
 </style>
 {% endif %}
@@ -63,12 +71,12 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle font-monospace fs-6 px-3 py-2">
-                  {{ incident.incident_code }}
+                  Incident ID: {{ incident.incident_code }}
                 </span>
                 {% include "components/status_badge.html" with status=incident.status %}
                 {% include "components/priority_badge.html" with priority=incident.priority %}
               </div>
-              <span class="text-muted-cs small"><i class="bi bi-calendar3 me-1"></i>Created {{ incident.created_at|date:"M d, Y" }}</span>
+              <span class="text-muted-cs small"><i class="bi bi-calendar3 me-1"></i>Opened {{ incident.created_at|date:"M d, Y" }}</span>
             </div>
 
             <h1 class="h2 fw-bold text-dark mb-3">{{ incident.title }}</h1>
@@ -79,24 +87,27 @@
                 <span class="fw-bold text-dark">{{ incident.category }}</span>
               </div>
               <div class="col-6 col-md-3">
-                <span class="small text-muted-cs d-block">Responsible Dept</span>
-                <span class="fw-bold text-dark">{{ incident.department.name|default:"General" }}</span>
+                <span class="small text-muted-cs d-block">Assigned department</span>
+                <span class="fw-bold text-dark">{{ incident.department.name|default:"Not assigned yet" }}</span>
               </div>
               <div class="col-6 col-md-3">
-                <span class="small text-muted-cs d-block">Report Count</span>
-                <span class="badge bg-secondary px-2 py-1">{{ incident.report_count }} Citizen Report{{ incident.report_count|pluralize }}</span>
+                <span class="small text-muted-cs d-block">Reports received</span>
+                <span class="badge bg-secondary px-2 py-1">{{ incident.report_count }} report{{ incident.report_count|pluralize }}</span>
               </div>
               <div class="col-6 col-md-3">
-                <span class="small text-muted-cs d-block">Severity Score</span>
-                <span class="fw-bold text-primary">{{ incident.severity_score|default:"Standard" }}</span>
+                <span class="small text-muted-cs d-block">Impact level</span>
+                <span class="fw-bold text-primary">{% if incident.severity_score != None %}{% if incident.severity_score >= 75 %}Very high{% elif incident.severity_score >= 50 %}High{% elif incident.severity_score >= 25 %}Moderate{% else %}Lower{% endif %}{% else %}Not yet assessed{% endif %}</span>
               </div>
             </div>
+
+            {% include "components/progress_tracker.html" %}
+            {% if incident.assigned_to %}<p class="small text-muted-cs"><strong>Assigned staff member:</strong> {{ incident.assigned_to }}</p>{% endif %}
 
             <!-- Resolution Notes if Resolved -->
             {% if incident.status == "RESOLVED" or incident.resolution_notes %}
               <div class="mt-4 p-3 bg-success bg-opacity-10 border border-success-subtle rounded">
-                <h3 class="h6 fw-bold text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i> Resolution Report</h3>
-                <p class="small text-dark mb-1">{{ incident.resolution_notes|default:"Municipal work completed successfully." }}</p>
+                <h3 class="h6 fw-bold text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i> Resolution update</h3>
+                <p class="small text-dark mb-1">{{ incident.resolution_notes|default:"No resolution update has been added yet." }}</p>
                 {% if incident.resolved_at %}
                   <span class="small text-muted">Resolved on {{ incident.resolved_at|date:"M d, Y at H:i" }}</span>
                 {% endif %}
@@ -108,7 +119,7 @@
         <!-- Status History Audit Timeline Card -->
         <div class="card border shadow-sm rounded-3 mb-4">
           <div class="card-header bg-light fw-bold text-dark p-3">
-            <i class="bi bi-clock-history text-primary me-2"></i> Transparent Status Timeline
+            <i class="bi bi-clock-history text-primary me-2"></i> Status history
           </div>
           <div class="card-body p-4">
             {% if incident.status_history.all %}
@@ -120,7 +131,8 @@
                       <div class="d-flex align-items-center gap-2">
                         {% include "components/status_badge.html" with status=history.new_status %}
                         {% if history.old_status %}
-                          <span class="small text-muted-cs">(from {{ history.old_status }})</span>
+                          <span class="small text-muted-cs">Previously:</span>
+                          {% include "components/status_badge.html" with status=history.old_status %}
                         {% endif %}
                       </div>
                       <span class="small text-muted-cs">{{ history.created_at|date:"M d, Y · H:i" }}</span>
@@ -132,7 +144,7 @@
                 {% endfor %}
               </div>
             {% else %}
-              <p class="text-muted-cs mb-0 small">Initial status reported. Audit log updates will appear here as response teams process this incident.</p>
+              <p class="text-muted-cs mb-0 small">No updates have been recorded yet. New updates will appear here as the response progresses.</p>
             {% endif %}
           </div>
         </div>
@@ -140,29 +152,35 @@
       </div>
 
       <div class="col-lg-4">
-        <!-- Map Card if Location Present -->
-        {% if incident.latitude and incident.longitude %}
-          <div class="card border shadow-sm rounded-3 mb-4">
-            <div class="card-header bg-light fw-bold text-dark p-3">
-              <i class="bi bi-geo-alt-fill text-danger me-2"></i> Representative Location
-            </div>
-            <div class="card-body p-3">
-              <div id="incident-map"></div>
-            </div>
+        <!-- Incident Location -->
+        <div class="card border shadow-sm rounded-3 mb-4">
+          <div class="card-header bg-light fw-bold text-dark p-3">
+            <i class="bi bi-geo-alt-fill text-danger me-2"></i> Incident location
           </div>
-        {% endif %}
+          {% if incident.latitude != None and incident.longitude != None and incident.latitude >= -90 and incident.latitude <= 90 and incident.longitude >= -180 and incident.longitude <= 180 %}
+            <div class="card-body p-3">
+              <div id="incident-map" class="cs-incident-map mb-2" data-lat="{{ incident.latitude|unlocalize }}" data-lng="{{ incident.longitude|unlocalize }}" role="region" aria-label="Map showing incident location"></div>
+              <div id="incident-map-fallback" class="p-3 rounded border bg-light text-muted-cs mb-2" role="status" hidden>Map could not be loaded. The incident location is still available.</div>
+              <div class="small text-muted-cs">Map position: <strong>{{ incident.latitude }}, {{ incident.longitude }}</strong></div>
+            </div>
+          {% else %}
+            <div class="card-body p-3">
+              <div class="p-3 rounded border bg-light text-muted-cs" role="status">Location unavailable</div>
+            </div>
+          {% endif %}
+        </div>
 
         <!-- Associated Citizen Reports List -->
         <div class="card border shadow-sm rounded-3">
           <div class="card-header bg-light fw-bold text-dark p-3">
-            <i class="bi bi-files text-primary me-2"></i> Linked Citizen Reports ({{ incident.issues.count }})
+            <i class="bi bi-files text-primary me-2"></i> Reports linked to this incident ({{ incident.issues.count }})
           </div>
           <div class="card-body p-0">
             <div class="list-group list-group-flush">
               {% for issue_item in incident.issues.all %}
                 <a href="{% url 'issues:detail' issue_item.pk %}" class="list-group-item list-group-item-action p-3">
                   <div class="d-flex align-items-center justify-content-between mb-1">
-                    <span class="badge bg-dark text-white font-monospace">{{ issue_item.issue_code }}</span>
+                    <span class="badge bg-dark text-white font-monospace">Report ID: {{ issue_item.issue_code }}</span>
                     <span class="small text-muted-cs">{{ issue_item.created_at|date:"M d" }}</span>
                   </div>
                   <div class="fw-semibold text-dark small">{{ issue_item.title }}</div>
@@ -182,22 +200,80 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if incident.latitude and incident.longitude %}
+{% if incident.latitude != None and incident.longitude != None and incident.latitude >= -90 and incident.latitude <= 90 and incident.longitude >= -180 and incident.longitude <= 180 %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5.0.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  const lat = parseFloat("{{ incident.latitude }}");
-  const lng = parseFloat("{{ incident.longitude }}");
+(function() {
+  function initializeIncidentMap() {
+    const mapElement = document.getElementById('incident-map');
+    const fallback = document.getElementById('incident-map-fallback');
+    if (!mapElement || mapElement.dataset.leafletInitialized === 'true') return;
+    mapElement.dataset.leafletInitialized = 'true';
 
-  if (!isNaN(lat) && !isNaN(lng)) {
-    const map = L.map('incident-map').setView([lat, lng], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-    L.marker([lat, lng]).addTo(map).bindPopup("<b>{{ incident.incident_code }}</b><br>{{ incident.title|escapejs }}").openPopup();
+    let map = null;
+    let failureHandled = false;
+    function showFallback(message, error) {
+      if (failureHandled) return;
+      failureHandled = true;
+      console.error('[CitySense incident map] ' + message, error || '');
+      mapElement.hidden = true;
+      if (fallback) fallback.hidden = false;
+      if (map) map.remove();
+    }
+
+    if (typeof window.L === 'undefined') {
+      showFallback('Leaflet failed to load.');
+      return;
+    }
+    if (typeof window.maplibregl === 'undefined') {
+      showFallback('MapLibre GL failed to load.');
+      return;
+    }
+    if (typeof window.L.maplibreGL !== 'function') {
+      showFallback('MapLibre GL Leaflet bridge failed to load.');
+      return;
+    }
+
+    const lat = Number(mapElement.dataset.lat);
+    const lng = Number(mapElement.dataset.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+        lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      mapElement.hidden = true;
+      if (fallback) {
+        fallback.textContent = 'Location unavailable';
+        fallback.hidden = false;
+      }
+      return;
+    }
+
+    try {
+      map = window.L.map(mapElement).setView([lat, lng], 15);
+      const basemap = window.L.maplibreGL({
+        style: 'https://tiles.openfreemap.org/styles/bright'
+      }).addTo(map);
+      map.attributionControl.addAttribution('OpenFreeMap ? OpenMapTiles Data from OpenStreetMap');
+      window.L.marker([lat, lng]).addTo(map).bindPopup('Incident location').openPopup();
+
+      const maplibreMap = basemap.getMaplibreMap();
+      maplibreMap.on('error', function(event) {
+        showFallback('OpenFreeMap style or map layer failed to load.', event && event.error);
+      });
+      requestAnimationFrame(function() {
+        if (!failureHandled) map.invalidateSize({ pan: false });
+      });
+    } catch (error) {
+      showFallback('The incident map could not be initialized.', error);
+    }
   }
-});
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeIncidentMap, { once: true });
+  } else {
+    initializeIncidentMap();
+  }
+})();
 </script>
 {% endif %}
 {% endblock %}

@@ -21,10 +21,10 @@
             {% if form.errors %}
               {% if form.non_field_errors %}
                 {% for error in form.non_field_errors %}
-                  {% include "components/alert.html" with level="danger" title="Authentication Error" message=error dismissible=True %}
+                  {% include "components/alert.html" with level="danger" title="Sign-in unsuccessful" message=error dismissible=True %}
                 {% endfor %}
               {% else %}
-                {% include "components/alert.html" with level="danger" title="Authentication Error" message="Please enter a correct Email address and password." dismissible=True %}
+                {% include "components/alert.html" with level="danger" title="Sign-in unsuccessful" message="Please enter a correct Email address and password." dismissible=True %}
               {% endif %}
             {% endif %}
 
@@ -67,8 +67,8 @@
 
             <div class="text-center mt-4 pt-3 border-top">
               <p class="small text-muted mb-0">
-                Don't have a citizen account?
-                <a href="{% url 'accounts:register' %}" class="fw-semibold text-primary text-decoration-none">Register as a Citizen</a>
+                Don't have an account?
+                <a href="{% url 'accounts:register' %}" class="fw-semibold text-primary text-decoration-none">Create an account</a>
               </p>
             </div>
           </div>
