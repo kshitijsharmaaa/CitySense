@@ -12,8 +12,8 @@ dj-database-url==3.1.2        # Parse DATABASE_URL env var
 # ── Configuration ────────────────────────────────────────────────────────────
 python-decouple==3.8          # Read settings from .env / environment
 
-# ── AI Integration (added Phase 3) ───────────────────────────────────────────
-google-generativeai           # Gemini multimodal API
+# ── AI Integration ──────────────────────────────────────────────────────────
+google-genai==1.75.0          # Gemini multimodal API
 
 # ── Development utilities ─────────────────────────────────────────────────────
 # (no Celery, Redis, WebSockets — see AGENTS.md)

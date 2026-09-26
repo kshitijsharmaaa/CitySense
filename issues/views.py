@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
 from accounts.decorators import citizen_required
+from ai_engine.services import triage_issue
 
 from .forms import IssueCreateForm
 from .models import Issue
@@ -20,7 +21,17 @@ def issue_list(request):
 def create(request):
     form = IssueCreateForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
-        issue = create_issue_with_incident(issue=form.save(commit=False), reported_by=request.user)
+        issue = form.save(commit=False)
+        triage_result = triage_issue(
+            title=issue.title,
+            description=issue.description,
+            image=form.cleaned_data.get("image"),
+        )
+        issue = create_issue_with_incident(
+            issue=issue,
+            reported_by=request.user,
+            triage_result=triage_result,
+        )
         return redirect("issues:detail", pk=issue.pk)
     return render(request, "issues/form.html", {"form": form})
 

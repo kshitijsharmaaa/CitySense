@@ -13,8 +13,11 @@ Tests cover:
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 
 from issues.models import Category, Department, Issue, Priority
+from .intelligence import calculate_incident_severity
 from .models import Incident, IncidentStatus, IncidentStatusHistory
 
 User = get_user_model()
@@ -187,3 +190,47 @@ class IncidentStatusHistoryTests(TestCase):
         # Newest first
         self.assertEqual(history[0].pk, h2.pk)
         self.assertEqual(history[1].pk, h1.pk)
+
+
+class IncidentSeverityTests(TestCase):
+    def test_severity_explains_report_priority_persistence_and_location(self):
+        now = timezone.now()
+        incident = Incident.objects.create(title="Persistent road hazard", priority=Priority.LOW)
+        older_report = Issue.objects.create(
+            title="First report",
+            description="Pothole",
+            incident=incident,
+            ai_priority=Priority.HIGH,
+            latitude="19.076000",
+            longitude="72.877700",
+            created_at=now - timedelta(days=7),
+        )
+        newer_report = Issue.objects.create(
+            title="Second report",
+            description="Pothole again",
+            incident=incident,
+            ai_priority=Priority.CRITICAL,
+            created_at=now,
+        )
+
+        assessment = calculate_incident_severity(incident, [older_report, newer_report], now=now)
+
+        self.assertEqual(assessment.score, 70.0)
+        self.assertEqual(assessment.factors["additional_report_points"], 5)
+        self.assertEqual(assessment.factors["highest_priority"], Priority.CRITICAL)
+        self.assertEqual(assessment.factors["persistence_points"], 10.0)
+        self.assertTrue(assessment.factors["location_present"])
+        incident.refresh_from_db()
+        self.assertEqual(incident.priority, Priority.LOW)
+
+    def test_severity_without_location_is_bounded_and_explained(self):
+        incident = Incident.objects.create(title="Unlocated issue", priority=Priority.MEDIUM)
+        report = Issue.objects.create(
+            title="Unlocated report", description="No coordinates", incident=incident,
+            ai_priority=Priority.MEDIUM,
+        )
+        assessment = calculate_incident_severity(incident, [report])
+        self.assertEqual(assessment.score, 32.0)
+        self.assertFalse(assessment.factors["location_present"])
+        self.assertGreaterEqual(assessment.score, 0)
+        self.assertLessEqual(assessment.score, 100)
