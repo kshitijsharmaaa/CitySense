@@ -14,6 +14,7 @@ Tests cover:
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.urls import reverse
 from datetime import timedelta
 
 from issues.models import Category, Department, Issue, Priority
@@ -234,3 +235,197 @@ class IncidentSeverityTests(TestCase):
         self.assertFalse(assessment.factors["location_present"])
         self.assertGreaterEqual(assessment.score, 0)
         self.assertLessEqual(assessment.score, 100)
+
+
+class AdminIncidentWorkflowTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="workflow-admin@example.com", name="Workflow Admin", password="CivicPass!2719",
+            role=User.Role.ADMIN,
+        )
+        self.operator = User.objects.create_user(
+            email="operator@example.com", name="Incident Operator", password="CivicPass!2719",
+            role=User.Role.ADMIN,
+        )
+        self.citizen = User.objects.create_user(
+            email="workflow-citizen@example.com", name="Workflow Citizen", password="CivicPass!2719",
+        )
+        self.department = Department.objects.create(name="Initial Department")
+        self.new_department = Department.objects.create(name="Assigned Department")
+        self.incident = Incident.objects.create(
+            title="Pothole at Main Gate",
+            category=Category.POTHOLE,
+            priority=Priority.HIGH,
+            department=self.department,
+            report_count=3,
+            severity_score=72.5,
+        )
+        self.issue = Issue.objects.create(
+            reported_by=self.citizen,
+            title="Large pothole report",
+            description="A pothole blocks the cycle lane.",
+            ai_category=Category.POTHOLE,
+            ai_priority=Priority.HIGH,
+            ai_summary="Pothole blocking the cycle lane.",
+            ai_confidence=0.85,
+            incident=self.incident,
+        )
+
+    def post_data(self, **overrides):
+        data = {
+            "department": str(self.department.pk),
+            "assigned_to": "",
+            "status": IncidentStatus.REPORTED,
+            "resolution_notes": "",
+            "status_comment": "",
+        }
+        data.update(overrides)
+        return data
+
+    def test_anonymous_users_are_redirected_from_management_routes(self):
+        for url in (
+            reverse("incidents:admin_dashboard"),
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+        ):
+            response = self.client.get(url)
+            self.assertRedirects(response, f"{reverse('accounts:login')}?next={url}")
+
+    def test_citizen_cannot_access_dashboard_or_modify_incident(self):
+        self.client.force_login(self.citizen)
+        response = self.client.get(reverse("incidents:admin_dashboard"))
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(status=IncidentStatus.RESOLVED, resolution_notes="Unauthorized"),
+        )
+        self.assertEqual(response.status_code, 403)
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.status, IncidentStatus.REPORTED)
+        self.assertEqual(self.incident.resolution_notes, "")
+        self.assertFalse(self.incident.status_history.exists())
+
+    def test_admin_can_view_dashboard_and_review_linked_reports(self):
+        self.client.force_login(self.admin)
+        dashboard_response = self.client.get(reverse("incidents:admin_dashboard"))
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertEqual(list(dashboard_response.context["incidents"]), [self.incident])
+        detail_response = self.client.get(reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(list(detail_response.context["issues"]), [self.issue])
+        self.assertEqual(detail_response.context["incident"].severity_score, 72.5)
+
+    def test_dashboard_filters_status_priority_category_and_department(self):
+        other_department = Department.objects.create(name="Other Department")
+        other = Incident.objects.create(
+            title="Streetlight out", category=Category.STREETLIGHT,
+            priority=Priority.LOW, status=IncidentStatus.VERIFIED, department=other_department,
+        )
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("incidents:admin_dashboard"), {
+            "status": IncidentStatus.REPORTED,
+            "priority": Priority.HIGH,
+            "category": Category.POTHOLE,
+            "department": self.department.pk,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["incidents"]), [self.incident])
+        self.assertNotIn(other, response.context["incidents"])
+
+    def test_admin_can_assign_department_and_existing_operator_field(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(department=str(self.new_department.pk), assigned_to=str(self.operator.pk)),
+        )
+        self.assertRedirects(response, reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.department, self.new_department)
+        self.assertEqual(self.incident.assigned_to, self.operator)
+        self.assertEqual(Incident.objects.count(), 1)
+        self.assertEqual(self.incident.report_count, 3)
+        self.assertEqual(self.incident.severity_score, 72.5)
+        self.assertEqual(self.issue.incident_id, self.incident.pk)
+        self.assertFalse(self.incident.status_history.exists())
+
+    def test_each_status_change_records_old_new_time_admin_and_comment(self):
+        self.client.force_login(self.admin)
+        detail_url = reverse("incidents:admin_detail", args=(self.incident.pk,))
+        self.client.post(detail_url, self.post_data(
+            status=IncidentStatus.VERIFIED, status_comment="Reviewed by operations.",
+        ))
+        self.client.post(detail_url, self.post_data(
+            status=IncidentStatus.IN_PROGRESS, status_comment="Crew dispatched.",
+        ))
+        history = list(self.incident.status_history.all())
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[0].old_status, IncidentStatus.VERIFIED)
+        self.assertEqual(history[0].new_status, IncidentStatus.IN_PROGRESS)
+        self.assertEqual(history[0].changed_by, self.admin)
+        self.assertEqual(history[0].comment, "Crew dispatched.")
+        self.assertIsNotNone(history[0].created_at)
+        self.assertEqual(history[1].old_status, IncidentStatus.REPORTED)
+        self.assertEqual(history[1].new_status, IncidentStatus.VERIFIED)
+
+    def test_resolution_records_notes_timestamp_and_status_history(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(
+                status=IncidentStatus.RESOLVED,
+                resolution_notes="The road crew filled and inspected the pothole.",
+                status_comment="Resolution verified on site.",
+            ),
+        )
+        self.assertRedirects(response, reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.status, IncidentStatus.RESOLVED)
+        self.assertEqual(self.incident.resolution_notes, "The road crew filled and inspected the pothole.")
+        self.assertIsNotNone(self.incident.resolved_at)
+        history = self.incident.status_history.get()
+        self.assertEqual(history.old_status, IncidentStatus.REPORTED)
+        self.assertEqual(history.new_status, IncidentStatus.RESOLVED)
+        self.assertEqual(history.changed_by, self.admin)
+        self.assertEqual(history.comment, "Resolution verified on site.")
+
+    def test_invalid_post_does_not_change_any_incident_fields_or_history(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(
+                department=str(self.new_department.pk),
+                status="NOT_A_STATUS",
+                resolution_notes="Must not be saved",
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors)
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.department, self.department)
+        self.assertEqual(self.incident.status, IncidentStatus.REPORTED)
+        self.assertEqual(self.incident.resolution_notes, "")
+        self.assertEqual(self.incident.report_count, 3)
+        self.assertEqual(self.incident.severity_score, 72.5)
+        self.assertEqual(self.incident.issues.count(), 1)
+        self.assertFalse(self.incident.status_history.exists())
+
+    def test_reopening_incident_clears_current_resolved_timestamp_but_keeps_notes(self):
+        self.incident.status = IncidentStatus.RESOLVED
+        self.incident.resolution_notes = "Resolved repair details"
+        self.incident.resolved_at = timezone.now()
+        self.incident.save()
+        self.client.force_login(self.admin)
+        self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(
+                status=IncidentStatus.IN_PROGRESS,
+                resolution_notes="Resolved repair details",
+                status_comment="Issue has reoccurred.",
+            ),
+        )
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.status, IncidentStatus.IN_PROGRESS)
+        self.assertEqual(self.incident.resolution_notes, "Resolved repair details")
+        self.assertIsNone(self.incident.resolved_at)
+        history = self.incident.status_history.get()
+        self.assertEqual(history.old_status, IncidentStatus.RESOLVED)
+        self.assertEqual(history.new_status, IncidentStatus.IN_PROGRESS)
