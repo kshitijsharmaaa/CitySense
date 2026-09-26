@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
-from accounts.decorators import citizen_required
+from accounts.decorators import citizen_or_admin_required, citizen_required
 from ai_engine.services import triage_issue
 
 from .forms import IssueCreateForm
@@ -9,10 +9,12 @@ from .models import Issue
 from .services import create_issue_with_incident
 
 
-@citizen_required
+@citizen_or_admin_required
 @require_GET
 def issue_list(request):
-    issues = Issue.objects.filter(reported_by=request.user).select_related("incident")
+    issues = Issue.objects.select_related("incident")
+    if request.user.is_citizen:
+        issues = issues.filter(reported_by=request.user)
     return render(request, "issues/list.html", {"issues": issues})
 
 
@@ -36,12 +38,11 @@ def create(request):
     return render(request, "issues/form.html", {"form": form})
 
 
-@citizen_required
+@citizen_or_admin_required
 @require_GET
 def detail(request, pk):
-    issue = get_object_or_404(
-        Issue.objects.select_related("incident__department"),
-        pk=pk,
-        reported_by=request.user,
-    )
+    issues = Issue.objects.select_related("incident__department")
+    if request.user.is_citizen:
+        issues = issues.filter(reported_by=request.user)
+    issue = get_object_or_404(issues, pk=pk)
     return render(request, "issues/detail.html", {"issue": issue})

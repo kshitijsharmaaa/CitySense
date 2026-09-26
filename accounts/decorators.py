@@ -26,3 +26,15 @@ def admin_required(view):
         return view(request, *args, **kwargs)
 
     return wrapped
+
+
+def citizen_or_admin_required(view):
+    """Require an authenticated CitySense CITIZEN or ADMIN account."""
+    @login_required
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not (request.user.is_citizen or request.user.is_admin_user):
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+
+    return wrapped

@@ -157,6 +157,7 @@ class CitizenIssueWorkflowTests(TestCase):
         issue = Issue.objects.create(title="Private", description="Private report")
         for url in (
             reverse("dashboard:index"),
+            reverse("issues:list"),
             reverse("issues:create"),
             reverse("issues:detail", args=(issue.pk,)),
         ):
@@ -286,14 +287,52 @@ class CitizenIssueWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/admin/login/", response["Location"])
 
-    def test_admin_role_cannot_use_citizen_workflow(self):
+    def test_admin_role_can_read_shared_pages_but_cannot_create_reports(self):
         admin_user = User.objects.create_user(
             email="admin-role@example.com", name="Admin Role", password="CivicPass!2719",
             role=User.Role.ADMIN,
         )
         self.client.force_login(admin_user)
-        self.assertEqual(self.client.get(reverse("dashboard:index")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("dashboard:index")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("issues:list")).status_code, 200)
         self.assertEqual(self.client.get(reverse("issues:create")).status_code, 403)
+
+    def test_citizen_can_access_issue_list_and_only_sees_own_reports(self):
+        own = Issue.objects.create(reported_by=self.citizen, title="My list report", description="Mine")
+        Issue.objects.create(reported_by=self.other_citizen, title="Other list report", description="Theirs")
+        self.client.force_login(self.citizen)
+        response = self.client.get(reverse("issues:list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["issues"]), [own])
+        self.assertContains(response, own.issue_code)
+        self.assertNotContains(response, "Other list report")
+
+    def test_admin_can_access_issue_list_and_sees_all_reports(self):
+        admin = User.objects.create_user(
+            email="issue-list-admin@example.com", name="Issue List Admin", password="CivicPass!2719",
+            role=User.Role.ADMIN,
+        )
+        first = Issue.objects.create(reported_by=self.citizen, title="Citizen report", description="Mine")
+        second = Issue.objects.create(
+            reported_by=self.other_citizen, title="Another report", description="Theirs"
+        )
+        self.client.force_login(admin)
+        response = self.client.get(reverse("issues:list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["issues"], [first, second])
+
+    def test_admin_can_open_issue_detail_for_any_report(self):
+        admin = User.objects.create_user(
+            email="issue-detail-admin@example.com", name="Issue Detail Admin", password="CivicPass!2719",
+            role=User.Role.ADMIN,
+        )
+        issue = Issue.objects.create(
+            reported_by=self.other_citizen, title="Reviewable report", description="Admin review"
+        )
+        self.client.force_login(admin)
+        response = self.client.get(reverse("issues:detail", args=(issue.pk,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["issue"], issue)
 
     def test_dashboard_only_shows_authenticated_citizens_issues(self):
         own = Issue.objects.create(reported_by=self.citizen, title="My issue", description="Mine")
@@ -303,6 +342,20 @@ class CitizenIssueWorkflowTests(TestCase):
         self.assertEqual(list(response.context["issues"]), [own])
         self.assertContains(response, own.issue_code)
         self.assertNotContains(response, "Private issue")
+
+    def test_admin_dashboard_shows_global_report_data(self):
+        admin = User.objects.create_user(
+            email="dashboard-admin@example.com", name="Dashboard Admin", password="CivicPass!2719",
+            role=User.Role.ADMIN,
+        )
+        first = Issue.objects.create(reported_by=self.citizen, title="Citizen report", description="Mine")
+        second = Issue.objects.create(
+            reported_by=self.other_citizen, title="Another report", description="Theirs"
+        )
+        self.client.force_login(admin)
+        response = self.client.get(reverse("dashboard:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["issues"], [first, second])
 
     def test_citizen_can_access_associated_incident_but_other_citizen_cannot(self):
         from issues.services import create_issue_with_incident
