@@ -1,9 +1,29 @@
+"""
+CitySense project-level views.
+"""
+
+from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_GET
+
+
+@require_GET
+def health_check(request):
+    """
+    GET /health/
+    Returns HTTP 200 with a JSON payload for monitoring.
+    """
+    return JsonResponse(
+        {
+            "status": "ok",
+            "service": "CitySense",
+        }
+    )
+
 
 def home(request):
     """
-    Renders the CitySense landing page along with sample context data
-    for testing Phase 1 reusable frontend components.
+    Renders the CitySense landing page.
     """
     sample_issues = [
         {

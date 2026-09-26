@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Submit an issue | CitySense</title></head>
+<body>
+  <h1>Submit an issue</h1>
+  <p>Temporary minimal form; final presentation is being built separately.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Submit report</button>
+  </form>
+  <p><a href="{% url 'dashboard:index' %}">Back to my reports</a></p>
+</body>
+</html>

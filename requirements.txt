@@ -1,0 +1,19 @@
+# CitySense — Python dependencies
+# Generated for Python 3.14 / Django 5.2
+
+# ── Core Framework ──────────────────────────────────────────────────────────
+Django==5.2.17
+Pillow>=10.0.0                 # Validate uploaded report images
+
+# ── Database ─────────────────────────────────────────────────────────────────
+psycopg2-binary==2.9.12       # PostgreSQL adapter
+dj-database-url==3.1.2        # Parse DATABASE_URL env var
+
+# ── Configuration ────────────────────────────────────────────────────────────
+python-decouple==3.8          # Read settings from .env / environment
+
+# ── AI Integration (added Phase 3) ───────────────────────────────────────────
+google-generativeai           # Gemini multimodal API
+
+# ── Development utilities ─────────────────────────────────────────────────────
+# (no Celery, Redis, WebSockets — see AGENTS.md)
