@@ -85,6 +85,7 @@
                   Photo Attachment <span class="badge bg-light text-muted border ms-1">Optional</span>
                 </label>
                 <input type="file" name="image" id="id_image" class="form-control {% if form.image.errors %}is-invalid{% endif %}" accept="image/jpeg,image/png,image/gif,image/webp">
+                <div id="image-client-error" class="invalid-feedback d-none"></div>
                 {% if form.image.errors %}
                   <div class="invalid-feedback d-block text-danger small mt-1">
                     {{ form.image.errors.0 }}
@@ -130,7 +131,7 @@
 
               <!-- Submit Button -->
               <div class="d-grid pt-2">
-                <button type="submit" class="btn btn-cs-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2">
+                <button type="submit" id="submit-report" class="btn btn-cs-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2">
                   <i class="bi bi-send-fill"></i> Submit Civic Report
                 </button>
               </div>
@@ -153,11 +154,26 @@ document.addEventListener("DOMContentLoaded", function() {
   const imageInput = document.getElementById("id_image");
   const previewWrapper = document.getElementById("image-preview-wrapper");
   const previewImg = document.getElementById("image-preview");
+  const imageError = document.getElementById("image-client-error");
+  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  const maxImageSize = 5 * 1024 * 1024;
 
   if (imageInput) {
     imageInput.addEventListener("change", function() {
       const file = this.files[0];
+      imageError.classList.add("d-none");
+      imageInput.classList.remove("is-invalid");
+      previewWrapper.classList.add("d-none");
       if (file) {
+        if (!allowedTypes.includes(file.type) || file.size > maxImageSize) {
+          imageError.textContent = file.size > maxImageSize
+            ? "Choose an image no larger than 5 MB."
+            : "Choose a JPEG, PNG, GIF, or WebP image.";
+          imageError.classList.remove("d-none");
+          imageInput.classList.add("is-invalid");
+          this.value = "";
+          return;
+        }
         const reader = new FileReader();
         reader.onload = function(e) {
           previewImg.src = e.target.result;
@@ -236,6 +252,17 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
   }
+
+  document.getElementById("issue-report-form").addEventListener("submit", function(event) {
+    if (imageInput.files[0] && (!allowedTypes.includes(imageInput.files[0].type) || imageInput.files[0].size > maxImageSize)) {
+      event.preventDefault();
+      imageInput.dispatchEvent(new Event("change"));
+      return;
+    }
+    const button = document.getElementById("submit-report");
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting report…';
+  });
 });
 </script>
 {% endblock %}

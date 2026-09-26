@@ -104,7 +104,7 @@
         {% endif %}
 
         <!-- AI Suggestions Metadata Card -->
-        {% if issue.ai_summary or issue.ai_category %}
+        {% if issue.ai_summary or issue.ai_category or issue.ai_priority or issue.ai_department or issue.ai_confidence != None %}
           <div class="card border shadow-sm rounded-3">
             <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
               <i class="bi bi-cpu-fill text-accent"></i> AI Triage Suggestions
@@ -116,6 +116,9 @@
                   <p class="small text-dark bg-light p-2.5 rounded border mb-0">{{ issue.ai_summary }}</p>
                 </div>
               {% endif %}
+              {% if issue.ai_category %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested category</span><strong>{{ issue.ai_category }}</strong></div>{% endif %}
+              {% if issue.ai_priority %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested priority</span><strong>{{ issue.ai_priority }}</strong></div>{% endif %}
+              {% if issue.ai_department %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested department</span><strong>{{ issue.ai_department.name }}</strong></div>{% endif %}
               {% if issue.ai_confidence %}
                 <div class="d-flex align-items-center justify-content-between small">
                   <span class="text-muted-cs">AI Model Confidence:</span>

@@ -46,35 +46,19 @@
       <div class="col-6 col-md-3">
         <div class="card border shadow-sm p-3 h-100">
           <div class="text-muted-cs small mb-1">Active Incidents</div>
-          <div class="fw-bold fs-3 text-warning">
-            {% with active_count=0 %}
-              {% for issue in issues %}
-                {% if issue.incident and issue.incident.status != 'RESOLVED' and issue.incident.status != 'REJECTED' %}
-                  {{ active_count|add:1 }}
-                {% endif %}
-              {% endfor %}
-            {% endwith %}
-          </div>
+          <div class="fw-bold fs-3 text-warning" id="metric-active-count">0</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card border shadow-sm p-3 h-100">
           <div class="text-muted-cs small mb-1">Resolved Civic Issues</div>
-          <div class="fw-bold fs-3 text-success">
-            {% with resolved_count=0 %}
-              {% for issue in issues %}
-                {% if issue.incident and issue.incident.status == 'RESOLVED' %}
-                  {{ resolved_count|add:1 }}
-                {% endif %}
-              {% endfor %}
-            {% endwith %}
-          </div>
+          <div class="fw-bold fs-3 text-success" id="metric-resolved-count">0</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card border shadow-sm p-3 h-100">
-          <div class="text-muted-cs small mb-1">Response Time SLA</div>
-          <div class="fw-bold fs-3 text-primary">&lt; 24h</div>
+          <div class="text-muted-cs small mb-1">In Progress</div>
+          <div class="fw-bold fs-3 text-primary" id="metric-progress-count">0</div>
         </div>
       </div>
     </div>
@@ -91,7 +75,7 @@
             {% if issues %}
               <div class="list-group list-group-flush">
                 {% for issue in issues %}
-                  <a href="{% url 'issues:detail' issue.pk %}" class="list-group-item list-group-item-action p-3">
+                  <a href="{% url 'issues:detail' issue.pk %}" class="list-group-item list-group-item-action p-3 report-row" {% if issue.incident %}data-incident-id="{{ issue.incident.pk }}" data-incident-status="{{ issue.incident.status }}"{% endif %}>
                     <div class="d-flex w-100 justify-content-between align-items-center mb-1">
                       <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-dark text-white font-monospace">{{ issue.issue_code }}</span>
@@ -143,6 +127,24 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+  // Count unique incidents, since multiple reports can refer to one incident.
+  const incidents = new Map();
+  document.querySelectorAll('.report-row[data-incident-id]').forEach(function(row) {
+    incidents.set(row.dataset.incidentId, row.dataset.incidentStatus);
+  });
+  let activeCount = 0;
+  let resolvedCount = 0;
+  let progressCount = 0;
+  incidents.forEach(function(status) {
+    if (status === 'RESOLVED') resolvedCount += 1;
+    else if (status !== 'REJECTED') activeCount += 1;
+    if (status === 'IN_PROGRESS') progressCount += 1;
+  });
+  document.getElementById('metric-active-count').textContent = activeCount;
+  document.getElementById('metric-resolved-count').textContent = resolvedCount;
+  document.getElementById('metric-progress-count').textContent = progressCount;
+
+  // Leaflet Map Initialization
   const map = L.map('dashboard-map').setView([28.6139, 77.2090], 11);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
