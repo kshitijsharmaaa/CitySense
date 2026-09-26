@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Incident management | CitySense</title></head>
+<body>
+  <main>
+    <h1>Incident management</h1>
+    <form method="get">
+      {{ filters.as_p }}
+      <button type="submit">Filter incidents</button>
+      <a href="{% url 'incidents:admin_dashboard' %}">Clear filters</a>
+    </form>
+    <table>
+      <thead><tr>
+        <th>Incident</th><th>Category</th><th>Priority</th><th>Department</th>
+        <th>Status</th><th>Reports</th><th>Severity</th><th>Created</th><th>Updated</th>
+      </tr></thead>
+      <tbody>
+      {% for incident in incidents %}
+        <tr>
+          <td><a href="{% url 'incidents:admin_detail' incident.pk %}">{{ incident.incident_code }}</a></td>
+          <td>{{ incident.get_category_display }}</td>
+          <td>{{ incident.get_priority_display }}</td>
+          <td>{{ incident.department|default:"Unassigned" }}</td>
+          <td>{{ incident.get_status_display }}</td>
+          <td>{{ incident.report_count }}</td>
+          <td>{{ incident.severity_score|default_if_none:"—" }}</td>
+          <td>{{ incident.created_at }}</td>
+          <td>{{ incident.updated_at }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">No incidents match these filters.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if page_obj.has_other_pages %}
+      <nav aria-label="Incident pages">
+        {% if page_obj.has_previous %}<a href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+      </nav>
+    {% endif %}
+  </main>
+</body>
+</html>

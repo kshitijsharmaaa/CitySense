@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-PHASE 5 IMPLEMENTED — Incident Intelligence (verified)
+PHASE 6 IMPLEMENTED — Admin Workflow (verified)
 
 ## Completed
 
@@ -49,22 +49,27 @@ PHASE 5 IMPLEMENTED — Incident Intelligence (verified)
 - [x] **Phase 5**: Report count, representative coordinates, and explainable severity score recalculate after association
 - [x] **Phase 5**: Admin-controlled Incident category, priority, department, and status remain unchanged during aggregation
 - [x] **Phase 5**: Tests cover unrelated and duplicate reports, missing coordinates, threshold behavior, aggregation, severity, and fallback
+- [x] **Phase 6**: Role-protected admin incident dashboard with server-side status, priority, category, and department filters
+- [x] **Phase 6**: Admin incident review includes linked Issues, AI suggestions, severity, report count, location, and status history
+- [x] **Phase 6**: Department and existing admin operator assignment, controlled status updates, and resolution notes
+- [x] **Phase 6**: Status transitions atomically record old/new status, timestamp, admin actor, and optional comment
+- [x] **Phase 6**: Resolved timestamp is maintained; invalid form submissions leave incident data unchanged
+- [x] **Phase 6**: Existing citizen templates/static files were left unchanged; backend-owned admin templates added
 
 ## Verification
 
 - `python manage.py check` — PASS (0 issues)
-- `python manage.py test` — PASS (78 tests)
+- `python manage.py test` — PASS (87 tests)
 - Verification used the project venv with process-local `DEBUG=False` because the inherited shell `DEBUG=release` value is not a valid Django boolean.
 
 ## Future Work
 
-- [ ] Admin workflow views
 - [ ] Map visualization
 - [ ] Analytics / charts
 - [ ] Deployment
 
 ## Next Milestone
 
-Phase 6 — admin dashboard views and workflows.
+Phase 7 — integration, deployment, and demo readiness.
 
-Phase 5 now associates sufficiently similar recent Issues with an existing active Incident. AI suggestions remain on Issues; they inform matching and severity but do not overwrite final Incident classification or status.
+Phase 6 provides the server-rendered administrator workflow. Phase 5 continues to associate sufficiently similar recent Issues with an existing active Incident; AI suggestions remain on Issues and do not overwrite final Incident classification or status.

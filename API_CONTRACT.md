@@ -26,13 +26,13 @@ An **Incident** is the underlying civic problem that administrators manage and r
 - Resolution information (status, notes, resolved_at) belongs to Incident — NOT to Issue
 - Administrators are responsible for transitioning Incident status
 
-### Phase 3, Phase 4, and Phase 5 behavior
+### Phase 3–6 behavior
 
 - `accounts:register` creates a CITIZEN account only; self-selected roles are ignored.
 - `issues:create` is available to authenticated users and takes `title`, `description`, optional `image`, `latitude`, and `longitude`. The reporter is always the session user.
 - Each submitted Issue is compared with active Incidents created in the previous 30 days using deterministic category, location, text, and recency signals.
 - A concrete non-`Other` category match and a score of at least `0.60` are required to associate a report with an existing Incident. Nearby coordinates (within 0.5 km) and text similarity contribute to the explainable score; missing coordinates provide no proximity evidence.
-- If a qualifying match exists, the Issue is linked to that Incident. Otherwise, a new Incident is created with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1`.
+- If a qualifying match exists, the Issue is linked to that Incident. Otherwise, a new Incident is created with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1` for administrator review.
 - A new Incident gets an initial `REPORTED` status history record in the same database transaction. Matching an existing Incident does not change its status or create a status transition.
 - Aggregation recalculates report count, representative coordinates, and severity. Incident category, priority, department, assignment, and status remain administrator-controlled and are not overwritten by AI suggestions or aggregation.
 - An unexpected failure in incident intelligence falls back to a separate Incident within the existing transaction, avoiding a speculative merge and keeping the Issue submission available.
@@ -41,6 +41,25 @@ An **Incident** is the underlying civic problem that administrators manage and r
 - Before the database transaction begins, `ai_engine` analyzes the title, description, and optional image. Its validated recommendations are saved to the Issue's existing AI fields.
 - AI recommendations never set Incident category, priority, or department. The Phase 3 Incident defaults remain `Other`, `MEDIUM`, `General`, and `REPORTED` for administrator review.
 - Missing credentials, timeout/provider errors, malformed JSON, or invalid values use the deterministic fallback classifier. Report submission and Incident creation continue.
+
+### Phase 6 administrator incident workflow
+
+Management routes are server-rendered Django views under `/incidents/manage/`:
+
+| Route name | Path | Methods | Purpose |
+|---|---|---|---|
+| `incidents:admin_dashboard` | `/incidents/manage/` | GET | Paginated incident list and server-side filters |
+| `incidents:admin_detail` | `/incidents/manage/<incident_pk>/` | GET, POST | Review reports and update assignment, status, and resolution |
+
+Both routes require an authenticated user whose CitySense role is `ADMIN`. Anonymous requests redirect to `accounts:login`; citizens receive HTTP 403. Existing citizen issue and incident routes retain their ownership checks and read-only behavior.
+
+The dashboard context contains `incidents` (current page of Incidents with department/assignee selected), `page_obj`, and `filters` (bound `IncidentFilterForm`). Supported GET filters are `status`, `priority`, `category`, and `department`; invalid filters are not applied. Each Incident row exposes code, category, priority, department, status, report count, severity, created time, and updated time.
+
+The review context contains `incident`, `issues`, `status_history`, and `form`. Linked Issues include reporter, AI-suggested department, category, priority, summary, confidence, raw description, and report location. The form edits `department`, existing optional `assigned_to` (active ADMIN users only), `status`, and `resolution_notes`; an optional `status_comment` is saved with a status transition. Category, priority, report count, severity, and Issue associations are read-only in this workflow.
+
+Every actual status change is saved atomically with an `IncidentStatusHistory` row containing old/new status, timestamp, comment, and the acting admin. Re-posting the current status does not create a false transition. All existing status choices are allowed; transitioning to `RESOLVED` sets `resolved_at`, and moving an incident out of `RESOLVED` clears that current-state timestamp while preserving resolution notes. Invalid form submissions save nothing. Assignment-only changes do not create status-history entries because the existing history model audits status transitions only.
+
+The backend provides minimal app-owned Django templates at `incidents/admin_dashboard.html` and `incidents/admin_detail.html`; existing citizen templates and static assets are unchanged. The citizen Incident context continues to expose `incident.status_history`, including old/new values, timestamp, actor, and comment, for later audit-timeline presentation.
 
 ---
 
@@ -60,7 +79,7 @@ An **Incident** is the underlying civic problem that administrators manage and r
 | `ai_department` | FK → Department | AI suggestion only |
 | `ai_summary` | text | AI-generated summary |
 | `ai_confidence` | float | 0.0–1.0 |
-| `incident` | FK → Incident | Nullable in the model; Phase 3 submission links a newly created Incident |
+| `incident` | FK → Incident | Nullable in the model; submission links a qualifying existing Incident or creates a new one |
 | `created_at` | datetime | |
 | `updated_at` | datetime | |
 

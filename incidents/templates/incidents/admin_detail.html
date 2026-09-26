@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ incident.incident_code }} review | CitySense</title></head>
+<body>
+  <main>
+    <p><a href="{% url 'incidents:admin_dashboard' %}">Incident dashboard</a></p>
+    <h1>{{ incident.incident_code }} — {{ incident.title }}</h1>
+    {% if messages %}{% for message in messages %}<p>{{ message }}</p>{% endfor %}{% endif %}
+    <dl>
+      <dt>Category</dt><dd>{{ incident.get_category_display }}</dd>
+      <dt>Priority</dt><dd>{{ incident.get_priority_display }}</dd>
+      <dt>Status</dt><dd>{{ incident.get_status_display }}</dd>
+      <dt>Department</dt><dd>{{ incident.department|default:"Unassigned" }}</dd>
+      <dt>Assigned operator</dt><dd>{{ incident.assigned_to|default:"Unassigned" }}</dd>
+      <dt>Reports</dt><dd>{{ incident.report_count }}</dd>
+      <dt>Severity</dt><dd>{{ incident.severity_score|default_if_none:"Not calculated" }}</dd>
+      <dt>Location</dt><dd>{% if incident.latitude is not None and incident.longitude is not None %}{{ incident.latitude }}, {{ incident.longitude }}{% else %}Not provided{% endif %}</dd>
+      <dt>Resolution notes</dt><dd>{{ incident.resolution_notes|default:"None" }}</dd>
+      <dt>Resolved at</dt><dd>{{ incident.resolved_at|default:"Not resolved" }}</dd>
+    </dl>
+
+    <h2>Update incident</h2>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <p>{{ field.label_tag }} {{ field }} {{ field.errors }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}</p>
+      {% endfor %}
+      <button type="submit">Save incident</button>
+    </form>
+
+    <h2>Citizen reports</h2>
+    {% for issue in issues %}
+      <article>
+        <h3>{{ issue.issue_code }} — {{ issue.title }}</h3>
+        <p>{{ issue.description }}</p>
+        <p>Reported by: {{ issue.reported_by|default:"Unknown" }} · {{ issue.created_at }}</p>
+        <p>AI suggested category: {{ issue.ai_category|default:"Not available" }}</p>
+        <p>AI suggested priority: {{ issue.ai_priority|default:"Not available" }}</p>
+        <p>AI suggested department: {{ issue.ai_department|default:"Not available" }}</p>
+        <p>AI summary: {{ issue.ai_summary|default:"Not available" }}</p>
+        <p>AI confidence: {{ issue.ai_confidence|default_if_none:"Not available" }}</p>
+        {% if issue.latitude is not None and issue.longitude is not None %}<p>Report location: {{ issue.latitude }}, {{ issue.longitude }}</p>{% endif %}
+      </article>
+    {% empty %}
+      <p>No citizen reports are linked to this incident.</p>
+    {% endfor %}
+
+    <h2>Status history</h2>
+    <ol>
+      {% for entry in status_history %}
+        <li>{{ entry.old_status|default:"Created" }} → {{ entry.get_new_status_display }} · {{ entry.created_at }} · {{ entry.changed_by|default:"System" }}{% if entry.comment %} — {{ entry.comment }}{% endif %}</li>
+      {% empty %}
+        <li>No status history available.</li>
+      {% endfor %}
+    </ol>
+  </main>
+</body>
+</html>
