@@ -16,10 +16,11 @@ logger = logging.getLogger(__name__)
 def create_issue_with_incident(*, issue, reported_by, triage_result=None):
     """Save a triaged report and associate it with a matching/new incident.
 
-    The triage provider runs before this transaction. The Issue stores its AI
-    recommendation, while final incident classification remains administrator-
-    controlled. Matching failures roll back to a savepoint and use a new
-    standalone incident so an uncertain report is never silently merged.
+    The triage provider runs before this transaction. The Issue always stores
+    its validated AI recommendation, which seeds classification only when a
+    new Incident is created. Existing incidents keep their canonical values.
+    Matching failures roll back to a savepoint and use a new standalone
+    incident so an uncertain report is never silently merged.
     """
     if triage_result is not None:
         triage_result = validate_triage_result(triage_result)
@@ -43,17 +44,24 @@ def create_issue_with_incident(*, issue, reported_by, triage_result=None):
                 matched_incident = match.incident
                 issue.incident = matched_incident
                 issue.save(update_fields=("incident", "updated_at"))
-                update_incident_intelligence(matched_incident)
+                update_incident_intelligence(matched_incident, update_severity=False)
     except Exception:
         logger.exception("Incident matching failed; creating a separate incident for issue %s", issue.pk)
         matched_incident = None
 
     if matched_incident is None:
-        department, _ = Department.objects.get_or_create(name="General")
+        if triage_result is None:
+            category = "Other"
+            priority = "MEDIUM"
+            department, _ = Department.objects.get_or_create(name="General")
+        else:
+            category = triage_result["category"]
+            priority = triage_result["priority"]
+            department = ai_department
         matched_incident = Incident.objects.create(
             title=issue.title,
-            category="Other",
-            priority="MEDIUM",
+            category=category,
+            priority=priority,
             status=IncidentStatus.REPORTED,
             department=department,
             latitude=issue.latitude,

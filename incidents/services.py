@@ -7,8 +7,8 @@ from issues.models import Issue
 from .intelligence import calculate_incident_severity
 
 
-def update_incident_intelligence(incident):
-    """Recalculate report count, representative location and severity."""
+def update_incident_intelligence(incident, *, update_severity=True):
+    """Recalculate report count and location, optionally refreshing severity."""
     reports = list(Issue.objects.filter(incident=incident).only(
         "id", "incident_id", "ai_priority", "latitude", "longitude", "created_at",
     ))
@@ -26,6 +26,9 @@ def update_incident_intelligence(incident):
         incident.latitude = None
         incident.longitude = None
 
-    incident.severity_score = calculate_incident_severity(incident, reports).score
-    incident.save(update_fields=("report_count", "latitude", "longitude", "severity_score", "updated_at"))
+    update_fields = ["report_count", "latitude", "longitude", "updated_at"]
+    if update_severity:
+        incident.severity_score = calculate_incident_severity(incident, reports).score
+        update_fields.append("severity_score")
+    incident.save(update_fields=update_fields)
     return incident

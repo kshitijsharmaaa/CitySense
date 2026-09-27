@@ -280,7 +280,7 @@ class CitizenIssueWorkflowTests(TestCase):
         self.assertNotContains(response, "Another resident's private report")
         self.assertNotContains(response, "Reports Received")
 
-    def test_valid_issue_creates_linked_default_incident_and_history(self):
+    def test_valid_issue_creates_linked_triaged_incident_and_history(self):
         self.client.force_login(self.citizen)
         response = self.client.post(reverse("issues:create"), self.submit_data())
         issue = Issue.objects.get()
@@ -290,9 +290,9 @@ class CitizenIssueWorkflowTests(TestCase):
         self.assertTrue(issue.issue_code.startswith("CIV-"))
         self.assertIsNotNone(incident)
         self.assertEqual(incident.title, issue.title)
-        self.assertEqual(incident.category, Category.OTHER)
+        self.assertEqual(incident.category, Category.POTHOLE)
         self.assertEqual(incident.priority, Priority.MEDIUM)
-        self.assertEqual(incident.department.name, "General")
+        self.assertEqual(incident.department.name, "Road Maintenance")
         self.assertEqual(incident.status, IncidentStatus.REPORTED)
         self.assertEqual(incident.report_count, 1)
         history = IncidentStatusHistory.objects.get(incident=incident)
@@ -1127,6 +1127,7 @@ class IncidentAggregationTests(TestCase):
         incident.priority = Priority.LOW
         incident.status = IncidentStatus.VERIFIED
         incident.department = Department.objects.create(name="Admin Assigned Roads")
+        incident.severity_score = 31.5
         incident.save()
 
         second = self.submit(
@@ -1142,6 +1143,32 @@ class IncidentAggregationTests(TestCase):
         self.assertEqual(incident.priority, Priority.LOW)
         self.assertEqual(incident.status, IncidentStatus.VERIFIED)
         self.assertEqual(incident.department.name, "Admin Assigned Roads")
+        self.assertEqual(incident.severity_score, 31.5)
+
+    def test_duplicate_report_does_not_replace_admin_edited_incident_values(self):
+        first = self.submit(
+            title="Pothole near school gate", description="A large hole blocks the main gate."
+        )
+        incident = first.incident
+        incident.category = Category.ROAD_DAMAGE
+        incident.priority = Priority.CRITICAL
+        incident.department = Department.objects.create(name="Admin Road Response")
+        incident.status = IncidentStatus.IN_PROGRESS
+        incident.severity_score = 88.0
+        incident.save()
+
+        duplicate = self.submit(
+            title="Pothole near school gate", description="A large hole blocks the main gate.",
+            category="Pothole", priority="LOW",
+        )
+
+        incident.refresh_from_db()
+        self.assertEqual(duplicate.incident_id, incident.pk)
+        self.assertEqual(incident.category, Category.ROAD_DAMAGE)
+        self.assertEqual(incident.priority, Priority.CRITICAL)
+        self.assertEqual(incident.department.name, "Admin Road Response")
+        self.assertEqual(incident.status, IncidentStatus.IN_PROGRESS)
+        self.assertEqual(incident.severity_score, 88.0)
 
     def test_intelligence_error_rolls_back_partial_merge_and_creates_separate_incident(self):
         first = self.submit(
@@ -1157,6 +1184,9 @@ class IncidentAggregationTests(TestCase):
         self.assertNotEqual(first.incident_id, second.incident_id)
         self.assertEqual(first.incident.report_count, 1)
         self.assertEqual(second.incident.report_count, 1)
+        self.assertEqual(second.incident.category, "Pothole")
+        self.assertEqual(second.incident.priority, "MEDIUM")
+        self.assertEqual(second.incident.department.name, "Road Maintenance")
         self.assertEqual(IncidentStatusHistory.objects.filter(incident=second.incident).count(), 1)
 
     def test_matching_service_failure_does_not_block_submission(self):

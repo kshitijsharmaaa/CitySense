@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image as PillowImage
 
-from incidents.models import IncidentStatusHistory
+from incidents.models import IncidentStatus, IncidentStatusHistory
 from issues.models import Issue
 
 from .fallback import classify_fallback
@@ -176,14 +176,18 @@ class IssueTriageIntegrationTests(TestCase):
         self.assertEqual(issue.ai_priority, "HIGH")
         self.assertEqual(issue.ai_department.name, "Road Maintenance")
         self.assertIsNotNone(issue.incident)
-        self.assertEqual(issue.incident.category, "Other")
-        self.assertEqual(issue.incident.priority, "MEDIUM")
-        self.assertEqual(issue.incident.department.name, "General")
-        self.assertEqual(IncidentStatusHistory.objects.filter(incident=issue.incident).count(), 1)
+        self.assertEqual(issue.incident.category, "Pothole")
+        self.assertEqual(issue.incident.priority, "HIGH")
+        self.assertEqual(issue.incident.department.name, "Road Maintenance")
+        self.assertEqual(issue.incident.status, IncidentStatus.REPORTED)
+        history = IncidentStatusHistory.objects.get(incident=issue.incident)
+        self.assertEqual(history.old_status, "")
+        self.assertEqual(history.new_status, IncidentStatus.REPORTED)
+        self.assertEqual(history.changed_by, self.user)
 
     @override_settings(AI_API_KEY="test-key")
     @patch("ai_engine.services.generate_with_gemini", return_value=json.dumps(VALID_RESULT))
-    def test_valid_ai_fields_are_saved_on_issue_only(self, provider):
+    def test_valid_ai_recommendation_is_saved_on_issue_and_new_incident(self, provider):
         response = self.client.post(reverse("issues:create"), {
             "title": "Report title",
             "description": "Report description",
@@ -196,5 +200,28 @@ class IssueTriageIntegrationTests(TestCase):
         self.assertEqual(issue.ai_department.name, "Road Maintenance")
         self.assertEqual(issue.ai_summary, VALID_RESULT["summary"])
         self.assertAlmostEqual(issue.ai_confidence, 0.91)
-        self.assertEqual(issue.incident.category, "Other")
-        self.assertEqual(issue.incident.priority, "MEDIUM")
+        self.assertEqual(issue.incident.category, "Pothole")
+        self.assertEqual(issue.incident.priority, "HIGH")
+        self.assertEqual(issue.incident.department.name, "Road Maintenance")
+        self.assertEqual(issue.incident.status, IncidentStatus.REPORTED)
+
+    @override_settings(AI_API_KEY="test-key")
+    @patch(
+        "ai_engine.services.generate_with_gemini",
+        return_value=json.dumps({**VALID_RESULT, "priority": "URGENT"}),
+    )
+    def test_invalid_ai_output_uses_fallback_for_new_incident(self, provider):
+        response = self.client.post(reverse("issues:create"), {
+            "title": "Dangerous pothole near school",
+            "description": "A dangerous pothole is blocking the road.",
+        })
+
+        issue = Issue.objects.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(issue.ai_category, "Pothole")
+        self.assertEqual(issue.ai_priority, "HIGH")
+        self.assertEqual(issue.ai_department.name, "Road Maintenance")
+        self.assertEqual(issue.incident.category, issue.ai_category)
+        self.assertEqual(issue.incident.priority, issue.ai_priority)
+        self.assertEqual(issue.incident.department, issue.ai_department)
+        self.assertEqual(issue.incident.status, IncidentStatus.REPORTED)
