@@ -21,7 +21,12 @@ from unittest.mock import patch
 from io import BytesIO
 from PIL import Image
 
-from incidents.intelligence import DUPLICATE_THRESHOLD, calculate_incident_severity, score_incident_match
+from incidents.intelligence import (
+    DUPLICATE_THRESHOLD,
+    calculate_incident_severity,
+    find_related_incident,
+    score_incident_match,
+)
 from incidents.models import Incident, IncidentStatus, IncidentStatusHistory
 from .forms import MAX_IMAGE_SIZE
 from .models import Category, Department, Issue, Priority
@@ -1104,6 +1109,104 @@ class IncidentAggregationTests(TestCase):
         self.assertTrue(match.reasons["category_match"])
         self.assertGreaterEqual(match.score, DUPLICATE_THRESHOLD)
         self.assertTrue(match.reasons["threshold_met"])
+
+    def test_identical_report_with_ai_category_variation_uses_prior_validated_category(self):
+        first = self.submit(
+            title="Street pothole", description="There is a pothole near the library.",
+            category="Pothole",
+        )
+        triage_result = {
+            "category": "Road Damage",
+            "priority": "HIGH",
+            "department": "Road Maintenance",
+            "summary": "There is a pothole near the library.",
+            "confidence": 0.8,
+        }
+        captured_matches = []
+
+        def capture_match(issue):
+            match = find_related_incident(issue)
+            captured_matches.append(match)
+            return match
+
+        with patch("issues.services.find_related_incident", side_effect=capture_match):
+            second = create_issue_with_incident(
+                issue=Issue(
+                    title="Street pothole",
+                    description="There is a pothole near the library.",
+                ),
+                reported_by=self.citizen,
+                triage_result=triage_result,
+            )
+
+        match = captured_matches[0]
+        self.assertEqual(second.ai_category, "Road Damage")
+        self.assertEqual(second.incident_id, first.incident_id)
+        self.assertEqual(match.incident.pk, first.incident_id)
+        self.assertEqual(match.score, 0.65)
+        self.assertEqual(match.reasons["text_similarity"], 1.0)
+        self.assertTrue(match.reasons["category_match"])
+        self.assertEqual(match.reasons["category_match_source"], "identical_prior_report")
+        self.assertEqual(Issue.objects.count(), 2)
+        self.assertEqual(Incident.objects.count(), 1)
+
+    def test_identical_same_category_reports_without_coordinates_preserve_incident(self):
+        self.client.force_login(self.citizen)
+        title = "Street pothole"
+        description = "There is a pothole near the library."
+        triage_result = {
+            "category": "Pothole",
+            "priority": "MEDIUM",
+            "department": "Road Maintenance",
+            "summary": description,
+            "confidence": 0.8,
+        }
+        url = reverse("issues:create")
+        with patch("issues.views.triage_issue", return_value=triage_result):
+            first_response = self.client.post(url, {"title": title, "description": description})
+        self.assertEqual(first_response.status_code, 302)
+        first = Issue.objects.get()
+        incident = first.incident
+        department = Department.objects.create(name="Admin Road Response")
+        incident.category = Category.POTHOLE
+        incident.priority = Priority.CRITICAL
+        incident.department = department
+        incident.status = IncidentStatus.VERIFIED
+        incident.severity_score = 73.5
+        incident.save()
+
+        captured_matches = []
+
+        def capture_match(issue):
+            match = find_related_incident(issue)
+            captured_matches.append(match)
+            return match
+
+        with (
+            patch("issues.views.triage_issue", return_value=triage_result),
+            patch("issues.services.find_related_incident", side_effect=capture_match),
+        ):
+            second_response = self.client.post(url, {"title": title, "description": description})
+        self.assertEqual(second_response.status_code, 302)
+        second = Issue.objects.exclude(pk=first.pk).get()
+
+        match = score_incident_match(second, incident, now=incident.created_at)
+        incident.refresh_from_db()
+        self.assertEqual(captured_matches[0].score, 0.65)
+        self.assertEqual(captured_matches[0].incident.pk, incident.pk)
+        self.assertEqual(second.ai_category, "Pothole")
+        self.assertEqual(second.incident_id, first.incident_id)
+        self.assertEqual(Incident.objects.count(), 1)
+        self.assertEqual(incident.report_count, 2)
+        self.assertEqual(match.score, 0.65)
+        self.assertEqual(match.reasons["category_match_source"], "current_issue")
+        self.assertIsNone(first.latitude)
+        self.assertIsNone(second.latitude)
+        self.assertEqual(incident.category, Category.POTHOLE)
+        self.assertEqual(incident.priority, Priority.CRITICAL)
+        self.assertEqual(incident.department, department)
+        self.assertEqual(incident.status, IncidentStatus.VERIFIED)
+        self.assertEqual(incident.severity_score, 73.5)
 
     @patch("incidents.intelligence.DUPLICATE_THRESHOLD", 0.99)
     def test_report_below_configured_threshold_is_not_merged(self):

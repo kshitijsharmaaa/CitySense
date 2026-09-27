@@ -94,7 +94,23 @@ def score_incident_match(issue, incident, *, now=None):
     categories = {incident.category}
     categories.update(item.ai_category for item in related_issues if item.ai_category)
     categories.discard("Other")
-    category_match = bool(issue.ai_category and issue.ai_category != "Other" and issue.ai_category in categories)
+    current_category_match = bool(
+        issue.ai_category
+        and issue.ai_category != "Other"
+        and issue.ai_category in categories
+    )
+    identical_report_category_match = any(
+        item.title == issue.title
+        and item.description == issue.description
+        and item.ai_category in categories
+        for item in related_issues
+    )
+    category_match = current_category_match or identical_report_category_match
+    category_match_source = (
+        "current_issue" if current_category_match
+        else "identical_prior_report" if identical_report_category_match
+        else None
+    )
 
     new_location = _coordinates(issue.latitude, issue.longitude)
     incident_locations = [
@@ -130,6 +146,7 @@ def score_incident_match(issue, incident, *, now=None):
         score=round(score, 4),
         reasons={
             "category_match": category_match,
+            "category_match_source": category_match_source,
             "distance_km": round(distance_km, 3) if distance_km is not None else None,
             "within_location_radius": nearby,
             "text_similarity": round(text_similarity, 4),
