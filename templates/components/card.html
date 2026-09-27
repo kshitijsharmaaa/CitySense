@@ -1,0 +1,40 @@
+{% comment %}
+Reusable Card Component for Civic Issues & Incidents
+Usage:
+  {% include "components/card.html" with issue=item %}
+{% endcomment %}
+
+<div class="cs-card">
+  <div class="cs-card-header">
+    <div class="d-flex align-items-center gap-1">
+      {% include "components/status_badge.html" with status=issue.status %}
+    </div>
+    {% include "components/priority_badge.html" with priority=issue.priority %}
+  </div>
+
+  <div class="cs-card-body">
+    <div class="d-flex align-items-center gap-2 mb-2 text-muted-cs small">
+      <span class="badge bg-light text-dark border"><i class="bi bi-tag me-1"></i>{{ issue.category|default:"Other problem" }}</span>
+      {% if issue.location %}
+        <span><i class="bi bi-geo-alt me-1"></i>{{ issue.location }}</span>
+      {% endif %}
+    </div>
+
+    <h3 class="cs-card-title">{{ issue.title }}</h3>
+    <p class="cs-card-desc">{{ issue.description }}</p>
+
+    {% if issue.duplicate_count and issue.duplicate_count > 0 %}
+      <div class="mt-2 p-2 rounded bg-light border d-flex align-items-center gap-2 small">
+        <i class="bi bi-layers-half text-primary"></i>
+        <span><strong>{{ issue.duplicate_count }}</strong> related report{{ issue.duplicate_count|pluralize }} found</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="cs-card-footer">
+    <span class="text-muted-cs"><i class="bi bi-clock me-1"></i>{{ issue.time_ago|default:"Just now" }}</span>
+    <button type="button" class="btn btn-cs-outline btn-sm py-1 px-2 text-decoration-none">
+      View report <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+  </div>
+</div>

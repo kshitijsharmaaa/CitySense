@@ -66,7 +66,6 @@ ROOT_URLCONF = "citysense.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # Global templates directory (Palak's frontend templates live here)
         "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -87,8 +86,6 @@ WSGI_APPLICATION = "citysense.wsgi.application"
 
 # ---------------------------------------------------------------------------
 # DATABASE
-# Prefer DATABASE_URL env var (PostgreSQL in production / CI).
-# Falls back to SQLite so the team can run locally without Postgres.
 # ---------------------------------------------------------------------------
 _database_url = config("DATABASE_URL", default="")
 
@@ -101,8 +98,6 @@ if _database_url:
         )
     }
 else:
-    # Local dev fallback — SQLite lets anyone run without Postgres installed.
-    # NOTE: switch to PostgreSQL before any demo or deployment.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -136,7 +131,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # ---------------------------------------------------------------------------
-# MEDIA FILES (uploaded images from citizens)
+# MEDIA FILES
 # ---------------------------------------------------------------------------
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -148,20 +143,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
 # CUSTOM USER MODEL
-# Must be set before any migrations are created.
 # ---------------------------------------------------------------------------
 AUTH_USER_MODEL = "accounts.CitySenseUser"
 
 # ---------------------------------------------------------------------------
-# AI CONFIGURATION (read from env — never hardcode)
+# AI CONFIGURATION
 # ---------------------------------------------------------------------------
 AI_API_KEY = config("AI_API_KEY", default="")
 AI_MODEL = config("AI_MODEL", default="gemini-3.8-flash")
 AI_TIMEOUT_SECONDS = config("AI_TIMEOUT_SECONDS", default=20, cast=int)
 
 # ---------------------------------------------------------------------------
-# LOGIN / AUTH REDIRECTS (placeholder — wired up in accounts phase)
+# LOGIN / AUTH REDIRECTS
 # ---------------------------------------------------------------------------
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "dashboard:index"
+LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"

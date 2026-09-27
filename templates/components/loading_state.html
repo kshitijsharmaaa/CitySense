@@ -1,0 +1,12 @@
+{% comment %}
+Reusable Loading State / Skeleton Component
+Usage:
+  {% include "components/loading_state.html" with message="Reviewing your report…" %}
+{% endcomment %}
+
+<div class="cs-loading-state">
+  <div class="spinner-border cs-spinner mb-3" role="status">
+    <span class="visually-hidden">Loading…</span>
+  </div>
+  <p class="text-muted-cs fw-medium mb-0">{{ message|default:"Getting things ready…" }}</p>
+</div>

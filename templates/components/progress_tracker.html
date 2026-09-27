@@ -1,0 +1,35 @@
+{% if case_progress %}
+<section class="cs-progress-wrap my-3" aria-label="Complaint progress">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+      <h2 class="h6 fw-bold text-dark mb-1">{% if request.user.is_admin_user %}Case progress{% else %}Complaint progress{% endif %}</h2>
+      {% if request.user.is_admin_user and case_next_action %}<p class="small text-muted-cs mb-0">Next step: {{ case_next_action }}</p>{% endif %}
+    </div>
+    {% if case_age %}
+      {% if request.user.is_admin_user %}
+        <div class="text-sm-end"><span class="small d-block">{{ case_age.age_text }}</span><span class="badge {% if case_age.state == 'overdue' %}text-bg-danger{% elif case_age.state == 'due_soon' %}text-bg-warning{% else %}bg-light text-dark border{% endif %}">{{ case_age.attention_text }}</span></div>
+      {% elif case_age.citizen_text %}
+        <span class="badge bg-light text-dark border">{{ case_age.citizen_text }}</span>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% if case_progress.latest_update %}
+    <div class="small text-muted-cs mb-3"><strong>Latest update:</strong> {% if case_progress.latest_update.comment %}{{ case_progress.latest_update.comment }}{% else %}{% include "components/status_badge.html" with status=case_progress.latest_update.new_status %}{% endif %} <time datetime="{{ case_progress.latest_update.created_at|date:'c' }}">{{ case_progress.latest_update.created_at|date:"M j, g:i A" }}</time></div>
+  {% endif %}
+  {% if case_progress.is_closed %}
+    <div class="alert alert-secondary mb-0" role="status">
+      <strong>Closed / Not approved</strong>
+      {% if case_progress.closed_note %}<div class="small mt-1">{{ case_progress.closed_note }}</div>{% endif %}
+    </div>
+  {% else %}
+    <ol class="cs-progress-tracker">
+      {% for step in case_progress.steps %}
+        <li class="cs-progress-step {% if step.is_current %}is-current{% elif step.is_complete %}is-complete{% else %}is-pending{% endif %}" {% if step.is_current %}aria-current="step"{% endif %}>
+          <span class="cs-progress-marker" aria-hidden="true">{% if step.is_complete %}<i class="bi bi-check-lg"></i>{% elif step.is_current %}<i class="bi bi-circle-fill"></i>{% else %}{{ forloop.counter }}{% endif %}</span>
+          <span>{{ step.label }}{% if step.occurred_at %}<time class="cs-progress-time" datetime="{{ step.occurred_at|date:'c' }}">{{ step.occurred_at|date:"M j, g:i A" }}</time>{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+</section>
+{% endif %}

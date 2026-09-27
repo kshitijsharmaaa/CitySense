@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Report local problems, follow their progress, and see how your community is responding.">
+  <title>{% block title %}CitySense | Report a Local Problem{% endblock %}</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <!-- CitySense Global Design System CSS -->
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  {% include "components/navbar.html" %}
+
+  <!-- Django Messages Container -->
+  {% if messages %}
+    <div class="container mt-3">
+      {% for message in messages %}
+        {% include "components/alert.html" with level=message.tags message=message.message dismissible=True %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Main View Content -->
+  <main id="main-content">
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="cs-footer">
+    <div class="container">
+      <div class="row gy-4">
+        <div class="col-lg-5">
+          <div class="d-flex align-items-center gap-2 mb-2 text-white font-weight-bold fs-5">
+            <span class="cs-brand-icon" style="width: 32px; height: 32px; font-size: 1rem;">
+              <i class="bi bi-shield-check"></i>
+            </span>
+            <span>CitySense</span>
+          </div>
+          <p class="small text-muted-cs mb-3 max-w-sm">
+            Report local problems and follow their progress as response teams work toward a resolution.
+          </p>
+          <div class="d-flex gap-2">
+            <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary">Community service</span>
+            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary">CitySense</span>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <h5 class="text-white fs-6 mb-3">Explore CitySense</h5>
+          <ul class="list-unstyled mb-0 d-flex flex-column gap-2 small">
+            {% if request.user.is_authenticated and request.user.is_admin_user %}
+              <li><a href="{% url 'issues:list' %}">Review reports</a></li>
+              <li><a href="{% url 'incidents:admin_dashboard' %}">Manage incidents</a></li>
+              <li><a href="{% url 'dashboard:index' %}">View dashboard</a></li>
+              <li><a href="{% url 'issues:create' %}">Submit a report</a></li>
+            {% else %}
+              <li><a href="{% url 'home' %}#hero">Report a problem</a></li>
+              <li><a href="{% url 'home' %}#workflow">How it works</a></li>
+              <li><a href="{% url 'home' %}#workflow">Report updates</a></li>
+              <li><a href="{% url 'home' %}#categories">Problems you can report</a></li>
+            {% endif %}
+          </ul>
+        </div>
+        <div class="col-6 col-lg-4">
+          <h5 class="text-white fs-6 mb-3">Working together</h5>
+          <p class="small text-muted-cs mb-2">
+            CitySense helps residents and response teams turn local reports into coordinated action.
+          </p>
+        </div>
+      </div>
+      <hr class="my-4 border-secondary opacity-25">
+      <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 small">
+        <div>&copy; 2026 CitySense Platform. Built for civic impact.</div>
+        <div class="text-muted-cs">See the problem. Understand the issue. Drive the action.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- CitySense Client JavaScript -->
+  <script src="{% static 'js/main.js' %}"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

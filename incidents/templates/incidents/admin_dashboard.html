@@ -1,44 +1,44 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Incident management | CitySense</title></head>
-<body>
-  <main>
-    <h1>Incident management</h1>
-    <form method="get">
-      {{ filters.as_p }}
-      <button type="submit">Filter incidents</button>
-      <a href="{% url 'incidents:admin_dashboard' %}">Clear filters</a>
-    </form>
-    <table>
-      <thead><tr>
-        <th>Incident</th><th>Category</th><th>Priority</th><th>Department</th>
-        <th>Status</th><th>Reports</th><th>Severity</th><th>Created</th><th>Updated</th>
-      </tr></thead>
-      <tbody>
-      {% for incident in incidents %}
-        <tr>
-          <td><a href="{% url 'incidents:admin_detail' incident.pk %}">{{ incident.incident_code }}</a></td>
-          <td>{{ incident.get_category_display }}</td>
-          <td>{{ incident.get_priority_display }}</td>
-          <td>{{ incident.department|default:"Unassigned" }}</td>
-          <td>{{ incident.get_status_display }}</td>
-          <td>{{ incident.report_count }}</td>
-          <td>{{ incident.severity_score|default_if_none:"—" }}</td>
-          <td>{{ incident.created_at }}</td>
-          <td>{{ incident.updated_at }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="9">No incidents match these filters.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% if page_obj.has_other_pages %}
-      <nav aria-label="Incident pages">
-        {% if page_obj.has_previous %}<a href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
-        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-        {% if page_obj.has_next %}<a href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
-      </nav>
-    {% endif %}
-  </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Incident Management | CitySense{% endblock %}
+{% block extra_head %}
+<style>
+.cs-command-page{background:var(--cs-bg-main);min-height:70vh}.cs-admin-eyebrow{color:var(--cs-accent);letter-spacing:.08em;text-transform:uppercase;font-size:.75rem;font-weight:700}.cs-admin-panel{border:1px solid var(--cs-border);border-radius:var(--cs-radius-lg);background:var(--cs-bg-card);box-shadow:var(--cs-shadow-sm)}.cs-admin-filters select{width:100%;min-height:44px;padding:.55rem .75rem;border:1px solid var(--cs-border-dark);border-radius:var(--cs-radius-sm);background:#fff;color:var(--cs-text-body)}.cs-admin-filters label{display:block;margin-bottom:.4rem;color:var(--cs-text-muted);font-size:.8rem;font-weight:600}.cs-admin-table{min-width:980px}.cs-admin-table thead th{padding:.9rem 1rem;border-bottom-color:var(--cs-border);background:var(--cs-bg-alt);color:var(--cs-text-muted);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}.cs-admin-table tbody td{padding:1rem;border-bottom-color:var(--cs-border);vertical-align:middle}.cs-admin-table tbody tr:last-child td{border-bottom:0}.cs-admin-code{display:inline-flex;padding:.35rem .55rem;border:1px solid var(--cs-border);border-radius:var(--cs-radius-sm);background:var(--cs-bg-alt);color:var(--cs-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;font-weight:700;white-space:nowrap}.cs-admin-title{color:var(--cs-text-heading);font-weight:650;text-decoration:none}.cs-admin-title:hover{color:var(--cs-accent);text-decoration:underline}.cs-admin-pager .page-link{color:var(--cs-primary);border-color:var(--cs-border)}.cs-admin-pager .page-item.active .page-link{color:#fff;background:var(--cs-primary);border-color:var(--cs-primary)}.cs-admin-pager .page-item.disabled .page-link{color:var(--cs-text-light)}@media(max-width:575.98px){.cs-admin-table thead th,.cs-admin-table tbody td{padding:.8rem .7rem}}
+</style>
+{% endblock %}
+{% block content %}
+<section class="cs-command-page py-4 py-lg-5"><div class="container">
+<header class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4 mb-lg-5">
+<div><div class="cs-admin-eyebrow mb-2"><i class="bi bi-shield-check me-1"></i> CitySense Operations</div><h1 class="display-6 fw-bold text-dark mb-2">Incident Management</h1><p class="text-muted-cs mb-0">Review incidents and coordinate the response.</p></div>
+<a href="{% url 'home' %}" class="btn btn-cs-outline d-inline-flex align-items-center gap-2"><i class="bi bi-arrow-left"></i> Home</a>
+</header>
+<section class="cs-admin-panel p-3 p-lg-4 mb-4" aria-labelledby="filters-title">
+<div class="d-flex align-items-center gap-2 mb-3"><span class="cs-brand-icon"><i class="bi bi-funnel"></i></span><div><h2 id="filters-title" class="h5 fw-bold text-dark mb-0">Find incidents</h2><p class="small text-muted-cs mb-0">Choose a status, priority, issue type, or department.</p></div></div>
+<form method="get" class="cs-admin-filters"><div class="row g-3 align-items-end">
+<div class="col-12 col-sm-6 col-lg-3"><label for="{{ filters.status.id_for_label }}">Status</label>{{ filters.status }}{% if filters.status.errors %}<div class="text-danger small mt-1">{{ filters.status.errors }}</div>{% endif %}</div>
+<div class="col-12 col-sm-6 col-lg-3"><label for="{{ filters.priority.id_for_label }}">Priority</label>{{ filters.priority }}{% if filters.priority.errors %}<div class="text-danger small mt-1">{{ filters.priority.errors }}</div>{% endif %}</div>
+<div class="col-12 col-sm-6 col-lg-3"><label for="{{ filters.category.id_for_label }}">Issue type</label>{{ filters.category }}{% if filters.category.errors %}<div class="text-danger small mt-1">{{ filters.category.errors }}</div>{% endif %}</div>
+<div class="col-12 col-sm-6 col-lg-3"><label for="{{ filters.department.id_for_label }}">Department</label>{{ filters.department }}{% if filters.department.errors %}<div class="text-danger small mt-1">{{ filters.department.errors }}</div>{% endif %}</div>
+<div class="col-12 d-flex flex-wrap gap-2 pt-1"><button type="submit" class="btn btn-cs-primary d-inline-flex align-items-center gap-2"><i class="bi bi-search"></i> Show results</button><a href="{% url 'incidents:admin_dashboard' %}" class="btn btn-cs-outline">Clear filters</a></div>
+</div></form></section>
+<section class="cs-admin-panel overflow-hidden" aria-labelledby="queue-title">
+<div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 p-3 p-lg-4 border-bottom"><div><h2 id="queue-title" class="h5 fw-bold text-dark mb-1">Incidents</h2><p class="small text-muted-cs mb-0">Recently updated incidents appear first.</p></div>{% if page_obj.has_other_pages %}<span class="small text-muted-cs">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% endif %}</div>
+{% if incidents %}
+<div class="table-responsive"><table class="table cs-admin-table mb-0"><caption class="visually-hidden">Incidents and their current response status</caption>
+<thead><tr><th scope="col">Incident</th><th scope="col">Issue type</th><th scope="col">Priority</th><th scope="col">Reports received</th><th scope="col">Department</th><th scope="col">Current status</th><th scope="col">Date opened</th><th scope="col"><span class="visually-hidden">Review</span></th></tr></thead>
+<tbody>{% for incident in incidents %}<tr>
+<td><span class="cs-admin-code mb-2">Incident ID: {{ incident.incident_code }}</span><div><a class="cs-admin-title" href="{% url 'incidents:admin_detail' incident.pk %}">{{ incident.title }}</a></div></td>
+<td>{{ incident.get_category_display }}</td><td>{% include "components/priority_badge.html" with priority=incident.priority %}</td>
+<td><span class="fw-semibold text-dark">{{ incident.report_count }}</span></td><td>{{ incident.department|default:"Unassigned" }}</td>
+<td>{% include "components/status_badge.html" with status=incident.status %}</td>
+<td class="text-muted-cs text-nowrap">{{ incident.created_at|date:"M j, Y" }}<span class="d-block small">{{ incident.created_at|date:"g:i A" }}</span></td>
+<td><a href="{% url 'incidents:admin_detail' incident.pk %}" class="btn btn-cs-outline btn-sm text-nowrap">Review incident <i class="bi bi-arrow-right ms-1"></i></a></td>
+</tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="p-3 p-md-5">{% include "components/empty_state.html" with title="No incidents match" message="Try changing or clearing the selected filters." icon="bi-inbox" %}</div>{% endif %}
+{% if page_obj.has_other_pages %}<nav class="cs-admin-pager p-3 p-lg-4 border-top" aria-label="Incident queue pages"><ul class="pagination justify-content-center justify-content-sm-end mb-0">
+{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.previous_page_number }}" aria-label="Previous page"><i class="bi bi-chevron-left"></i><span class="ms-1">Previous</span></a></li>{% else %}<li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i><span class="ms-1">Previous</span></span></li>{% endif %}
+<li class="page-item active" aria-current="page"><span class="page-link">{{ page_obj.number }}</span></li>
+{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.next_page_number }}" aria-label="Next page"><span class="me-1">Next</span><i class="bi bi-chevron-right"></i></a></li>{% else %}<li class="page-item disabled"><span class="page-link"><span class="me-1">Next</span><i class="bi bi-chevron-right"></i></span></li>{% endif %}
+</ul></nav>{% endif %}
+</section></div></section>
+{% endblock %}

@@ -22,6 +22,9 @@ def update_incident_intelligence(incident):
         divisor = Decimal(len(located_reports))
         incident.latitude = sum((report.latitude for report in located_reports), Decimal("0")) / divisor
         incident.longitude = sum((report.longitude for report in located_reports), Decimal("0")) / divisor
+    else:
+        incident.latitude = None
+        incident.longitude = None
 
     incident.severity_score = calculate_incident_severity(incident, reports).score
     incident.save(update_fields=("report_count", "latitude", "longitude", "severity_score", "updated_at"))

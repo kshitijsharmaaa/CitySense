@@ -11,7 +11,15 @@ from .models import Incident, IncidentStatus
 class IncidentFilterForm(forms.Form):
     status = forms.ChoiceField(
         required=False,
-        choices=(('', 'All statuses'), *IncidentStatus.choices),
+        choices=(
+            ('', 'All statuses'),
+            (IncidentStatus.REPORTED, 'Report received'),
+            (IncidentStatus.VERIFIED, 'Verified'),
+            (IncidentStatus.ASSIGNED, 'Assigned'),
+            (IncidentStatus.IN_PROGRESS, 'Work in progress'),
+            (IncidentStatus.RESOLVED, 'Resolved'),
+            (IncidentStatus.REJECTED, 'Closed / Not approved'),
+        ),
     )
     priority = forms.ChoiceField(
         required=False,
@@ -45,6 +53,14 @@ class IncidentReviewForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['department'].required = False
         self.fields['assigned_to'].required = False
+        self.fields['status'].choices = (
+            (IncidentStatus.REPORTED, 'Report received'),
+            (IncidentStatus.VERIFIED, 'Verified'),
+            (IncidentStatus.ASSIGNED, 'Assigned'),
+            (IncidentStatus.IN_PROGRESS, 'Work in progress'),
+            (IncidentStatus.RESOLVED, 'Resolved'),
+            (IncidentStatus.REJECTED, 'Closed / Not approved'),
+        )
         self.fields['assigned_to'].queryset = CitySenseUser.objects.filter(
             role=CitySenseUser.Role.ADMIN,
             is_active=True,
