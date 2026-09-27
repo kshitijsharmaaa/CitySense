@@ -1,9 +1,13 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static l10n %}
 {% block title %}Incident {{ incident.incident_code }} | CitySense{% endblock %}
 {% block extra_head %}
+{% if incident.latitude is not None and incident.longitude is not None and incident.latitude >= -90 and incident.latitude <= 90 and incident.longitude >= -180 and incident.longitude <= 180 %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endif %}
 <style>
 .cs-review-page{background:var(--cs-bg-main);min-height:70vh}.cs-review-panel{border:1px solid var(--cs-border);border-radius:var(--cs-radius-lg);background:var(--cs-bg-card);box-shadow:var(--cs-shadow-sm)}.cs-review-eyebrow{color:var(--cs-accent);letter-spacing:.08em;text-transform:uppercase;font-size:.75rem;font-weight:700}.cs-review-stat{border:1px solid var(--cs-border);border-radius:var(--cs-radius-md);background:var(--cs-bg-alt);padding:1rem;height:100%}.cs-review-stat-label{color:var(--cs-text-muted);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}.cs-review-stat-value{color:var(--cs-text-heading);font-size:1.3rem;font-weight:750}.cs-review-definition{display:grid;grid-template-columns:minmax(130px,.7fr) 1.3fr;gap:.8rem 1rem;margin:0}.cs-review-definition dt{color:var(--cs-text-muted);font-size:.88rem;font-weight:600}.cs-review-definition dd{min-width:0;margin:0;color:var(--cs-text-heading);overflow-wrap:anywhere}.cs-review-form select,.cs-review-form textarea{width:100%;min-height:44px;padding:.65rem .75rem;border:1px solid var(--cs-border-dark);border-radius:var(--cs-radius-sm);background:#fff;color:var(--cs-text-body)}.cs-review-form textarea{min-height:108px;resize:vertical}.cs-review-form label{display:block;margin-bottom:.4rem;color:var(--cs-text-muted);font-size:.85rem;font-weight:650}.cs-review-form .errorlist{margin:.35rem 0 0;padding-left:1rem;color:#b91c1c;font-size:.85rem}.cs-review-form .helptext{display:block;margin-top:.35rem;color:var(--cs-text-muted);font-size:.8rem}.cs-review-timeline{position:relative;margin:0;padding:.25rem 0 .25rem 1.55rem;list-style:none}.cs-review-timeline:before{position:absolute;top:.75rem;bottom:.75rem;left:.42rem;width:2px;background:var(--cs-border);content:""}.cs-review-event{position:relative;padding:0 0 1.5rem}.cs-review-event:last-child{padding-bottom:0}.cs-review-dot{position:absolute;top:.2rem;left:-1.48rem;width:.9rem;height:.9rem;border:3px solid #fff;border-radius:50%;background:var(--cs-accent);box-shadow:0 0 0 1px var(--cs-border-dark)}.cs-review-report{border:1px solid var(--cs-border);border-radius:var(--cs-radius-md);background:#fff;overflow:hidden}.cs-review-photo{width:100%;max-height:280px;object-fit:cover;background:var(--cs-bg-alt)}.cs-review-ai{border-left:3px solid var(--cs-accent);background:#f0f9ff}.cs-review-location{min-height:120px;border:1px dashed var(--cs-border-dark);border-radius:var(--cs-radius-md);background:linear-gradient(135deg,#f8fafc,#e0f2fe)}@media(max-width:575.98px){.cs-review-definition{grid-template-columns:1fr;gap:.25rem}.cs-review-definition dd{margin-bottom:.7rem}}
+.cs-review-location-map{display:block;height:240px;min-height:240px;width:100%;padding:0!important;overflow:hidden}
 .cs-admin-code{display:inline-flex;padding:.35rem .55rem;border:1px solid var(--cs-border);border-radius:var(--cs-radius-sm);background:var(--cs-bg-alt);color:var(--cs-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;font-weight:700;white-space:nowrap}
 </style>
 {% endblock %}
@@ -26,7 +30,7 @@
 <dl class="cs-review-definition"><dt>Issue type</dt><dd>{{ incident.get_category_display }}</dd><dt>Priority</dt><dd>{% include "components/priority_badge.html" with priority=incident.priority %}</dd><dt>Current status</dt><dd>{% include "components/status_badge.html" with status=incident.status %}</dd><dt>Assigned department</dt><dd>{{ incident.department|default:"Not assigned yet" }}</dd><dt>Assigned staff member</dt><dd>{{ incident.assigned_to|default:"Not assigned yet" }}</dd><dt>Reports received</dt><dd>{{ incident.report_count }}</dd><dt>Impact level</dt><dd>{% if incident.severity_score != None %}{% if incident.severity_score >= 75 %}Very high{% elif incident.severity_score >= 50 %}High{% elif incident.severity_score >= 25 %}Moderate{% else %}Lower{% endif %}{% else %}Not yet assessed{% endif %}</dd><dt>Resolution update</dt><dd>{{ incident.resolution_notes|default:"No resolution update yet."|linebreaksbr }}</dd></dl></section>
 
 <section class="cs-review-panel p-3 p-lg-4 mb-4" aria-labelledby="location-title"><div class="d-flex align-items-center gap-2 mb-3"><span class="cs-brand-icon"><i class="bi bi-geo-alt"></i></span><div><h2 id="location-title" class="h5 fw-bold text-dark mb-0">Location</h2><p class="small text-muted-cs mb-0">Approximate location based on reports received.</p></div></div>
-{% if incident.latitude is not None and incident.longitude is not None %}<div class="cs-review-location d-flex flex-column justify-content-center align-items-center text-center p-3 mb-3"><i class="bi bi-map fs-3 text-primary mb-2" aria-hidden="true"></i><span class="fw-semibold text-dark">A map view is not available here yet.</span></div><div class="d-flex flex-wrap gap-3 small"><span><strong>Map position:</strong> {{ incident.latitude }}, {{ incident.longitude }}</span></div>{% else %}<div class="p-3 rounded border bg-light text-muted-cs">Location unavailable</div>{% endif %}</section>
+{% if incident.latitude is not None and incident.longitude is not None and incident.latitude >= -90 and incident.latitude <= 90 and incident.longitude >= -180 and incident.longitude <= 180 %}<div id="admin-incident-map" class="cs-review-location cs-review-location-map mb-3" data-lat="{{ incident.latitude|unlocalize }}" data-lng="{{ incident.longitude|unlocalize }}" role="region" aria-label="Map showing incident location"></div><div class="d-flex flex-wrap gap-3 small"><span><strong>Map position:</strong> {{ incident.latitude }}, {{ incident.longitude }}</span></div>{% else %}<div class="p-3 rounded border bg-light text-muted-cs" role="status">Location unavailable</div>{% endif %}</section>
 
 <section class="cs-review-panel p-3 p-lg-4" aria-labelledby="reports-title"><div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3"><div><h2 id="reports-title" class="h5 fw-bold text-dark mb-0">Reports linked to this incident</h2><p class="small text-muted-cs mb-0">Read what residents have reported.</p></div><span class="badge bg-primary bg-opacity-10 text-primary border px-3 py-2">{{ incident.report_count }} report{{ incident.report_count|pluralize }}</span></div>
 {% for issue in issues %}<article class="cs-review-report mb-3"><div class="p-3"><div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mb-2"><div class="d-flex align-items-center flex-wrap gap-2"><span class="cs-admin-code">Report ID: {{ issue.issue_code }}</span><h3 class="h6 fw-bold text-dark mb-0">{{ issue.title }}</h3></div><time class="small text-muted-cs text-nowrap" datetime="{{ issue.created_at|date:'c' }}">{{ issue.created_at|date:"M j, Y, g:i A" }}</time></div><p class="text-secondary mb-0" style="white-space:pre-line;">{{ issue.description }}</p></div>
@@ -58,6 +62,37 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if incident.latitude is not None and incident.longitude is not None and incident.latitude >= -90 and incident.latitude <= 90 and incident.longitude >= -180 and incident.longitude <= 180 %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  function initializeAdminIncidentMap() {
+    const mapElement = document.getElementById('admin-incident-map');
+    if (!mapElement || mapElement.dataset.leafletInitialized === 'true') return;
+    mapElement.dataset.leafletInitialized = 'true';
+
+    const lat = Number(mapElement.dataset.lat);
+    const lng = Number(mapElement.dataset.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+        lat < -90 || lat > 90 || lng < -180 || lng > 180 ||
+        typeof window.L === 'undefined') return;
+
+    const map = window.L.map(mapElement).setView([lat, lng], 15);
+    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    window.L.marker([lat, lng]).addTo(map);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAdminIncidentMap, { once: true });
+  } else {
+    initializeAdminIncidentMap();
+  }
+})();
+</script>
+{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('incident-review-form');
