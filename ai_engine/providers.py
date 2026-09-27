@@ -15,8 +15,10 @@ def generate_with_gemini(*, title, description, image=None):
     from google.genai import types
 
     prompt = build_triage_prompt(title=title, description=description)
-    contents = [prompt]
+    parts = [types.Part.from_text(text=prompt)]
     if image is not None:
+        # UploadedFile objects are consumed again by Issue.save(); always read
+        # from the start and leave them ready for Django's subsequent save.
         image.seek(0)
         try:
             image_bytes = image.read()
@@ -27,9 +29,13 @@ def generate_with_gemini(*, title, description, image=None):
                     "GIF": "image/gif",
                     "WEBP": "image/webp",
                 }[opened_image.format]
-            contents.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
+            parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
         finally:
             image.seek(0)
+
+    # Keep the written report and optional visual evidence together in one
+    # user turn so Gemini receives a single, explicitly multimodal request.
+    contents = types.Content(role="user", parts=parts)
 
     timeout_seconds = max(1, min(settings.AI_TIMEOUT_SECONDS, 30))
     timeout_ms = timeout_seconds * 1000

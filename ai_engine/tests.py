@@ -114,25 +114,64 @@ class GeminiProviderAdapterTests(TestCase):
 
         self.assertEqual(response, json.dumps(VALID_RESULT))
         self.assertEqual(client.models.generate_content.call_args.kwargs["model"], "test-model")
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertEqual(contents.role, "user")
+        self.assertEqual(len(contents.parts), 1)
+        self.assertIn("Pothole", contents.parts[0].text)
+        self.assertIn("Near the library", contents.parts[0].text)
         options = client_factory.call_args.kwargs["http_options"]
         self.assertEqual(options.timeout, 3000)
         self.assertEqual(options.retry_options.attempts, 1)
 
     @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
     @patch("google.genai.Client")
-    def test_provider_includes_optional_image_and_restores_file_position(self, client_factory):
-        buffer = BytesIO()
-        PillowImage.new("RGB", (2, 2), color="red").save(buffer, format="PNG")
-        image_bytes = buffer.getvalue()
+    def test_provider_sends_text_and_image_bytes_in_one_multimodal_user_content(self, client_factory):
+        image_bytes = self.make_image_bytes("PNG")
         upload = SimpleUploadedFile("report.png", image_bytes, content_type="image/png")
+        upload.seek(4)
         client = client_factory.return_value.__enter__.return_value
         client.models.generate_content.return_value.text = json.dumps(VALID_RESULT)
 
-        generate_with_gemini(title="Pothole", description="Near the library", image=upload)
+        generate_with_gemini(title="There is a problem here", description="Near the library", image=upload)
 
         contents = client.models.generate_content.call_args.kwargs["contents"]
-        self.assertEqual(contents[1].inline_data.mime_type, "image/png")
+        self.assertEqual(contents.role, "user")
+        self.assertEqual(len(contents.parts), 2)
+        self.assertIn("There is a problem here", contents.parts[0].text)
+        self.assertIn("Near the library", contents.parts[0].text)
+        self.assertEqual(contents.parts[1].inline_data.mime_type, "image/png")
+        self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
+        # The provider rewinds before reading and leaves the upload ready for
+        # Django's later Issue.save() call.
+        self.assertEqual(upload.tell(), 0)
         self.assertEqual(upload.read(), image_bytes)
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
+    def test_provider_uses_mime_type_from_validated_image_format(self, client_factory):
+        for image_format, mime_type in (
+            ("JPEG", "image/jpeg"),
+            ("PNG", "image/png"),
+            ("GIF", "image/gif"),
+            ("WEBP", "image/webp"),
+        ):
+            with self.subTest(image_format=image_format):
+                image_bytes = self.make_image_bytes(image_format)
+                upload = SimpleUploadedFile(
+                    f"report.{image_format.lower()}", image_bytes,
+                    content_type="application/octet-stream",
+                )
+                generate_with_gemini(title="Report", description="Details", image=upload)
+                contents = client_factory.return_value.__enter__.return_value.models.generate_content.call_args.kwargs["contents"]
+                self.assertEqual(contents.parts[1].inline_data.mime_type, mime_type)
+                self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
+                self.assertEqual(upload.tell(), 0)
+
+    @staticmethod
+    def make_image_bytes(image_format):
+        buffer = BytesIO()
+        PillowImage.new("RGB", (2, 2), color="red").save(buffer, format=image_format)
+        return buffer.getvalue()
 
 
 class FallbackClassifierTests(TestCase):
@@ -161,6 +200,32 @@ class IssueTriageIntegrationTests(TestCase):
             email="triage@example.com", name="Triage Citizen", password="CivicPass!2719"
         )
         self.client.force_login(self.user)
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
+    def test_uploaded_image_reaches_gemini_with_report_text(self, client_factory):
+        buffer = BytesIO()
+        PillowImage.new("RGB", (2, 2), color="red").save(buffer, format="JPEG")
+        image_bytes = buffer.getvalue()
+        client = client_factory.return_value.__enter__.return_value
+        client.models.generate_content.return_value.text = json.dumps(VALID_RESULT)
+
+        response = self.client.post(reverse("issues:create"), {
+            "title": "There is a problem here",
+            "description": "Near the library",
+            "image": SimpleUploadedFile("report.jpg", image_bytes, content_type="image/jpeg"),
+        })
+
+        self.assertEqual(response.status_code, 302)
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertEqual(contents.role, "user")
+        self.assertIn("There is a problem here", contents.parts[0].text)
+        self.assertIn("Near the library", contents.parts[0].text)
+        self.assertEqual(contents.parts[1].inline_data.mime_type, "image/jpeg")
+        self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
+        issue = Issue.objects.get()
+        with issue.image.open("rb") as saved_image:
+            self.assertEqual(saved_image.read(), image_bytes)
 
     @override_settings(AI_API_KEY="test-key")
     @patch("ai_engine.services.generate_with_gemini", side_effect=TimeoutError)
