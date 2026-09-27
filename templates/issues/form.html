@@ -187,12 +187,16 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // Leaflet Map Initialization
+  const mapElement = document.getElementById("picker-map");
+  if (!mapElement || mapElement.dataset.leafletInitialized === "true") return;
+  mapElement.dataset.leafletInitialized = "true";
+
   const defaultLat = parseFloat(document.getElementById("id_latitude").value) || 28.6139;
   const defaultLng = parseFloat(document.getElementById("id_longitude").value) || 77.2090;
 
-  const map = L.map('picker-map').setView([defaultLat, defaultLng], 13);
+  const map = L.map(mapElement).setView([defaultLat, defaultLng], 13);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
