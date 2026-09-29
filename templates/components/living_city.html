@@ -38,6 +38,11 @@
       <g class="cs-city-pin cs-city-pin--12 cs-city-pin--admin-only" transform="translate(906 606)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
       <g class="cs-city-pin cs-city-pin--13 cs-city-pin--admin-only" transform="translate(1034 125)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
     </g>
+    {% if request.resolver_match.app_name == 'dashboard' and request.resolver_match.url_name == 'index' and request.user.is_citizen %}
+      <g class="cs-city-personal-reports" aria-hidden="true">
+        {% for point in city_report_points %}<circle class="cs-city-personal-report{% if point.resolved %} is-resolved{% endif %}" cx="{{ point.x }}" cy="{{ point.y }}" r="{% if point.resolved %}3{% else %}4{% endif %}" />{% endfor %}
+      </g>
+    {% endif %}
     <g class="cs-living-city__signals">
       <circle class="cs-city-signal-dot cs-city-signal-dot--main" r="3.2" />
       <circle class="cs-city-signal-dot cs-city-signal-dot--west" r="2.8" />

@@ -28,7 +28,78 @@ document.addEventListener('DOMContentLoaded', function () {
   initializeScrollStories();
   initializeProcessReveal();
   initializeLivingCityParallax();
+  initializeProfilePreferences();
 });
+
+function initializeProfilePreferences() {
+  var themeNode = document.querySelector('[data-profile-theme]');
+  var motionNode = document.querySelector('[data-profile-motion]');
+  if (!themeNode && !motionNode) return;
+  if (themeNode) {
+    themeNode.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Dark' : 'Light';
+    window.addEventListener('citysense:themechange', function (event) {
+      themeNode.textContent = event.detail.theme === 'dark' ? 'Dark' : 'Light';
+    });
+  }
+  if (motionNode) {
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    motionNode.textContent = reducedMotion.matches ? 'Enabled by device setting' : 'Not enabled by device setting';
+    if (typeof reducedMotion.addEventListener === 'function') {
+      reducedMotion.addEventListener('change', function (event) {
+        motionNode.textContent = event.matches ? 'Enabled by device setting' : 'Not enabled by device setting';
+      });
+    }
+  }
+}
+
+/** Keep the user's CitySense light/dark preference across every page. */
+function initializeThemeToggle() {
+  var root = document.documentElement;
+  var toggles = document.querySelectorAll('[data-theme-toggle]');
+  if (!toggles.length) return;
+
+  updateThemeControls(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeThemeToggle, { once: true });
+} else {
+  initializeThemeToggle();
+}
+
+/** One delegated handler works for desktop/mobile controls and late DOM readiness. */
+document.addEventListener('click', function (event) {
+  var target = event.target;
+  var button = target && target.closest ? target.closest('[data-theme-toggle]') : null;
+  if (!button) return;
+
+  event.preventDefault();
+  var root = document.documentElement;
+  var nextTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.classList.add('cs-theme-transition');
+  root.setAttribute('data-theme', nextTheme);
+  root.setAttribute('data-bs-theme', nextTheme);
+  updateThemeControls(nextTheme);
+  try {
+    localStorage.setItem('citysense-theme', nextTheme);
+  } catch (error) {
+    // The selection remains active for this page when storage is unavailable.
+  }
+  window.dispatchEvent(new CustomEvent('citysense:themechange', { detail: { theme: nextTheme } }));
+  window.setTimeout(function () { root.classList.remove('cs-theme-transition'); }, 240);
+});
+
+function updateThemeControls(theme) {
+  var isDark = theme === 'dark';
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (button) {
+    button.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+    button.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    var icon = button.querySelector('[data-theme-icon]');
+    var label = button.querySelector('[data-theme-label]');
+    if (icon) icon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+    if (label) label.textContent = isDark ? 'Light mode' : 'Dark mode';
+  });
+}
 
 /** Add a small pointer response to auth ambience without moving the form card. */
 function initializeLivingCityParallax() {

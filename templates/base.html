@@ -19,6 +19,21 @@
       }
     })();
   </script>
+  <script>
+    (function () {
+      var theme = null;
+      try {
+        theme = localStorage.getItem('citysense-theme');
+      } catch (error) {
+        // Use the operating-system preference when browser storage is unavailable.
+      }
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-bs-theme', theme);
+    })();
+  </script>
   <meta name="description" content="Report local problems, follow their progress, and see how your community is responding.">
   <title>{% block title %}CitySense | Report a Local Problem{% endblock %}</title>
 

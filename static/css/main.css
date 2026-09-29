@@ -11,6 +11,12 @@
   --cs-primary-hover: #1e40af;
   --cs-accent: #0284c7;        /* Tech Blue */
   --cs-accent-light: #e0f2fe;
+  --cs-focus: rgba(14, 116, 198, .22);
+  --cs-input-bg: #ffffff;
+  --cs-surface-raised: #ffffff;
+  --cs-success: #15803d;
+  --cs-warning: #b45309;
+  --cs-danger: #b91c1c;
 
   /* Neutral Spectrum */
   --cs-bg-main: #f8fafc;       /* Clean Off-White Page Background */
@@ -767,6 +773,244 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ========================================================================
+   CitySense night theme. The light palette above remains the default.
+   ======================================================================== */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cs-primary: #5b9bff;
+  --cs-primary-hover: #82b2ff;
+  --cs-accent: #55c3f2;
+  --cs-accent-light: rgba(48, 133, 190, .2);
+  --cs-bg-main: #0c1522;
+  --cs-bg-card: #142235;
+  --cs-bg-alt: #1a2b40;
+  --cs-surface-raised: #1c2e44;
+  --cs-border: #293d54;
+  --cs-border-dark: #3a536d;
+  --cs-text-heading: #edf4fc;
+  --cs-text-body: #d0dce9;
+  --cs-text-muted: #a6b7c9;
+  --cs-text-light: #869ab0;
+  --cs-input-bg: #101d2d;
+  --cs-focus: rgba(85, 195, 242, .28);
+  --cs-success: #63cf91;
+  --cs-warning: #f2bd62;
+  --cs-danger: #ff8589;
+  --cs-status-reported: #c0cedd;
+  --cs-status-verified: #72d1f6;
+  --cs-status-assigned: #b2a5ff;
+  --cs-status-in-progress: #f4c46d;
+  --cs-status-resolved: #72d89d;
+  --cs-status-rejected: #ff9297;
+  --cs-priority-low: #bac8d8;
+  --cs-priority-medium: #85b3ff;
+  --cs-priority-high: #ffc078;
+  --cs-priority-critical: #ff9297;
+  --cs-shadow-sm: 0 2px 8px rgba(0, 0, 0, .18);
+  --cs-shadow-md: 0 8px 24px rgba(0, 0, 0, .24);
+  --cs-shadow-lg: 0 18px 44px rgba(0, 0, 0, .3);
+  --bs-body-bg: #0c1522;
+  --bs-body-color: #d0dce9;
+  --bs-secondary-color: #a6b7c9;
+  --bs-tertiary-color: #869ab0;
+  --bs-secondary-bg: #1a2b40;
+  --bs-tertiary-bg: #142235;
+  --bs-border-color: #293d54;
+  --bs-emphasis-color: #edf4fc;
+  --bs-link-color: #75b8ff;
+  --bs-link-hover-color: #a3d2ff;
+}
+
+html[data-theme="dark"] body { background-color: var(--cs-bg-main); color: var(--cs-text-body); }
+html[data-theme="dark"] .cs-navbar { background-color: #111e2e; border-color: var(--cs-border); }
+html[data-theme="dark"] .cs-brand { color: #edf4fc; }
+html[data-theme="dark"] .cs-nav-link { color: var(--cs-text-body); }
+html[data-theme="dark"] .cs-nav-link:hover,
+html[data-theme="dark"] .cs-nav-link.active { color: #9ac8ff !important; background: rgba(74, 144, 226, .15); }
+html[data-theme="dark"] .cs-footer { background: #08111d; color: var(--cs-text-muted); }
+html[data-theme="dark"] .cs-footer a { color: #c6d7e8; }
+html[data-theme="dark"] .cs-footer a:hover { color: #fff; }
+
+/* Bootstrap surfaces and text utilities used throughout the Django templates. */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .card-footer,
+html[data-theme="dark"] .list-group-item,
+html[data-theme="dark"] .dropdown-menu,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .offcanvas,
+html[data-theme="dark"] .toast,
+html[data-theme="dark"] .popover {
+  color: var(--cs-text-body);
+  background-color: var(--cs-bg-card);
+  border-color: var(--cs-border);
+}
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .card-footer,
+html[data-theme="dark"] .list-group-item { border-color: var(--cs-border); }
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-light,
+html[data-theme="dark"] .bg-body,
+html[data-theme="dark"] .bg-body-tertiary { background-color: var(--cs-bg-alt) !important; }
+html[data-theme="dark"] .text-dark,
+html[data-theme="dark"] .text-body-emphasis { color: var(--cs-text-heading) !important; }
+html[data-theme="dark"] .text-body,
+html[data-theme="dark"] .text-secondary { color: var(--cs-text-body) !important; }
+html[data-theme="dark"] .text-muted,
+html[data-theme="dark"] .text-body-secondary { color: var(--cs-text-muted) !important; }
+html[data-theme="dark"] .text-black { color: var(--cs-text-heading) !important; }
+html[data-theme="dark"] .border,
+html[data-theme="dark"] .border-top,
+html[data-theme="dark"] .border-end,
+html[data-theme="dark"] .border-bottom,
+html[data-theme="dark"] .border-start { border-color: var(--cs-border) !important; }
+html[data-theme="dark"] .table {
+  --bs-table-color: var(--cs-text-body);
+  --bs-table-bg: var(--cs-bg-card);
+  --bs-table-border-color: var(--cs-border);
+  --bs-table-striped-color: var(--cs-text-body);
+  --bs-table-striped-bg: rgba(132, 166, 203, .045);
+  --bs-table-hover-color: var(--cs-text-heading);
+  --bs-table-hover-bg: rgba(106, 164, 224, .09);
+}
+html[data-theme="dark"] .table thead th { color: #b9cee2; }
+html[data-theme="dark"] .pagination .page-link { background: var(--cs-bg-card); border-color: var(--cs-border); color: #9bc8ff; }
+html[data-theme="dark"] .pagination .page-item.active .page-link { background: #24518a; border-color: #3974b9; color: #fff; }
+html[data-theme="dark"] .pagination .page-item.disabled .page-link { background: var(--cs-bg-alt); color: #8195ab; }
+
+/* Inputs retain their native interaction while adopting the selected palette. */
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select,
+html[data-theme="dark"] .input-group-text,
+html[data-theme="dark"] .cs-review-form textarea,
+html[data-theme="dark"] .cs-review-form select {
+  color: var(--cs-text-body);
+  background-color: var(--cs-input-bg);
+  border-color: var(--cs-border-dark);
+}
+html[data-theme="dark"] .form-control::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: #91a5ba; opacity: 1; }
+html[data-theme="dark"] .form-control:focus,
+html[data-theme="dark"] .form-select:focus,
+html[data-theme="dark"] .cs-review-form textarea:focus,
+html[data-theme="dark"] .cs-review-form select:focus {
+  color: var(--cs-text-heading);
+  background-color: #122238;
+  border-color: #5aabed;
+  box-shadow: 0 0 0 .22rem var(--cs-focus);
+}
+html[data-theme="dark"] .form-control:disabled,
+html[data-theme="dark"] .form-select:disabled { color: #91a5ba; background-color: #19283a; }
+html[data-theme="dark"] .form-check-input { background-color: var(--cs-input-bg); border-color: #7890a8; }
+html[data-theme="dark"] .form-check-input:checked { background-color: #367fc7; border-color: #367fc7; }
+html[data-theme="dark"] .form-text,
+html[data-theme="dark"] .form-label { color: var(--cs-text-muted); }
+html[data-theme="dark"] .invalid-feedback { color: #ff969a; }
+html[data-theme="dark"] .valid-feedback { color: #7fe0a7; }
+html[data-theme="dark"] .alert-info { --bs-alert-color: #a9dfff; --bs-alert-bg: #122d42; --bs-alert-border-color: #28536e; }
+html[data-theme="dark"] .alert-success { --bs-alert-color: #a5e9bd; --bs-alert-bg: #153326; --bs-alert-border-color: #285b40; }
+html[data-theme="dark"] .alert-warning { --bs-alert-color: #f7d18e; --bs-alert-bg: #382d19; --bs-alert-border-color: #67512b; }
+html[data-theme="dark"] .alert-danger { --bs-alert-color: #ffb2b5; --bs-alert-bg: #3b2027; --bs-alert-border-color: #70404a; }
+
+/* Civic states keep their meaning with low-luminance tinted backgrounds. */
+html[data-theme="dark"] .badge-status-reported,
+html[data-theme="dark"] .badge-priority-low { background: #253548; border-color: #3a5067; }
+html[data-theme="dark"] .badge-status-verified,
+html[data-theme="dark"] .badge-priority-medium { background: #17334a; border-color: #2b5b7b; }
+html[data-theme="dark"] .badge-status-assigned { background: #282947; border-color: #4c4d78; }
+html[data-theme="dark"] .badge-status-in_progress,
+html[data-theme="dark"] .badge-priority-high { background: #3a2d1a; border-color: #71562a; }
+html[data-theme="dark"] .badge-status-resolved { background: #183528; border-color: #2c5b40; }
+html[data-theme="dark"] .badge-status-rejected,
+html[data-theme="dark"] .badge-priority-critical { background: #3b2027; border-color: #70404a; }
+html[data-theme="dark"] .cs-alert-info { background: #122d42; border-color: #28536e; color: #a9dfff; }
+html[data-theme="dark"] .cs-alert-success { background: #153326; border-color: #285b40; color: #a5e9bd; }
+html[data-theme="dark"] .cs-alert-warning { background: #382d19; border-color: #67512b; color: #f7d18e; }
+html[data-theme="dark"] .cs-alert-danger { background: #3b2027; border-color: #70404a; color: #ffb2b5; }
+
+/* Page-specific panels: distinct elevations without changing page structure. */
+html[data-theme="dark"] .cs-auth-page {
+  background: radial-gradient(ellipse at 82% 14%, rgba(35, 93, 145, .25), transparent 36rem),
+    linear-gradient(180deg, #0c1726 0%, #101d2d 100%);
+}
+html[data-theme="dark"] .hero-section { background: linear-gradient(180deg, #111f31 0%, var(--cs-bg-main) 100%); }
+html[data-theme="dark"] .cs-dashboard-row:hover,
+html[data-theme="dark"] .cs-dashboard-row:focus-visible { background: #1b3048; }
+html[data-theme="dark"] .cs-dashboard-metric { background-color: var(--cs-bg-card) !important; }
+html[data-theme="dark"] .cs-card { background-color: var(--cs-bg-card); border-color: var(--cs-border); color: var(--cs-text-body); }
+html[data-theme="dark"] .cs-card .cs-card-title { color: var(--cs-text-heading); }
+html[data-theme="dark"] .cs-card .cs-card-desc { color: var(--cs-text-body); }
+html[data-theme="dark"] .cs-card .cs-card-footer { background-color: var(--cs-bg-alt); color: var(--cs-text-muted); border-color: var(--cs-border); }
+html[data-theme="dark"] .cs-photo-tile { background: #101d2d; border-color: var(--cs-border); }
+html[data-theme="dark"] .cs-photo-remove { color: #17283a; }
+html[data-theme="dark"] .cs-photo-caption { color: #fff; }
+html[data-theme="dark"] .cs-ai-report-preview { background: #142c42; border-color: #285579; }
+html[data-theme="dark"] .cs-map-frame { background: #15263a; border-color: var(--cs-border); }
+html[data-theme="dark"] .cs-severity-meter { background: #29394c; }
+html[data-theme="dark"] .cs-progress-wrap,
+html[data-theme="dark"] .cs-review-panel,
+html[data-theme="dark"] .cs-review-report,
+html[data-theme="dark"] .cs-admin-mobile-card,
+html[data-theme="dark"] .cs-mobile-report-card { background: var(--cs-bg-card); border-color: var(--cs-border); color: var(--cs-text-body); }
+html[data-theme="dark"] .cs-review-ai { background: #152d43; }
+html[data-theme="dark"] .cs-review-location { background: linear-gradient(135deg, #172a3e, #1a3850); }
+html[data-theme="dark"] .cs-mobile-nav { background: rgba(17, 30, 46, .96); border-color: var(--cs-border); }
+html[data-theme="dark"] .cs-profile-action { color: var(--cs-text-body); }
+html[data-theme="dark"] .cs-navbar-drawer .offcanvas-header { background: #152438; }
+html[data-theme="dark"] .cs-theme-toggle { white-space: nowrap; }
+html[data-theme="dark"] .btn-close { filter: invert(1) grayscale(100%) brightness(180%); }
+
+/* Leaflet controls and popups adapt; the configured map tiles stay untouched. */
+html[data-theme="dark"] .leaflet-bar a,
+html[data-theme="dark"] .leaflet-bar a:hover,
+html[data-theme="dark"] .leaflet-control-layers,
+html[data-theme="dark"] .leaflet-popup-content-wrapper,
+html[data-theme="dark"] .leaflet-popup-tip {
+  color: #dce9f5;
+  background: #17283b;
+  border-color: #3b526a;
+}
+html[data-theme="dark"] .leaflet-bar a { border-bottom-color: #3b526a; }
+html[data-theme="dark"] .leaflet-control-attribution { color: #40566c; }
+html[data-theme="dark"] .leaflet-control-attribution a { color: #23658a; }
+
+/* The existing civic network gains a little definition against navy surfaces. */
+html[data-theme="dark"] .cs-living-city { color: rgba(104, 171, 239, .72); }
+html[data-theme="dark"] .cs-living-city__wash--one { background: radial-gradient(circle, rgba(53, 121, 193, .48), rgba(30, 82, 143, .2) 44%, transparent 74%); }
+html[data-theme="dark"] .cs-living-city__wash--two { background: radial-gradient(circle, rgba(77, 91, 174, .34), rgba(50, 66, 137, .16) 45%, transparent 74%); }
+html[data-theme="dark"] .cs-living-city__wash--three { background: radial-gradient(circle, rgba(52, 146, 190, .32), rgba(32, 90, 139, .15) 46%, transparent 74%); }
+html[data-theme="dark"] .cs-city-pin { color: #65b8f1; }
+html[data-theme="dark"] .cs-living-city__pin-head { stroke: rgba(194, 224, 255, .78); }
+html[data-theme="dark"] .cs-city-pin__ripple { stroke: rgba(83, 188, 239, .52); }
+html[data-theme="dark"] .cs-living-city--dashboard,
+html[data-theme="dark"] .cs-living-city--admin { --cs-city-route-opacity: .98; --cs-city-pin-opacity: 1; }
+html[data-theme="dark"] .cs-living-city--auth { --cs-living-opacity: .48; --cs-city-route-opacity: .62; --cs-city-pin-opacity: .74; }
+html[data-theme="dark"] .cs-living-city--detail { --cs-living-opacity: .2; --cs-city-route-opacity: .34; }
+
+html.cs-theme-transition body,
+html.cs-theme-transition .cs-navbar,
+html.cs-theme-transition .card,
+html.cs-theme-transition .cs-card,
+html.cs-theme-transition .cs-review-panel,
+html.cs-theme-transition .form-control,
+html.cs-theme-transition .form-select,
+html.cs-theme-transition .cs-mobile-nav,
+html.cs-theme-transition .cs-footer {
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.cs-theme-transition body,
+  html.cs-theme-transition .cs-navbar,
+  html.cs-theme-transition .card,
+  html.cs-theme-transition .cs-card,
+  html.cs-theme-transition .cs-review-panel,
+  html.cs-theme-transition .form-control,
+  html.cs-theme-transition .form-select,
+  html.cs-theme-transition .cs-mobile-nav,
+  html.cs-theme-transition .cs-footer { transition: none; }
+}
+
 @media (max-width: 767.98px) {
   .cs-scroll-story {
     --cs-story-sticky-top: 64px;
@@ -1326,6 +1570,20 @@ h1, h2, h3, h4, h5, h6 {
     min-height: 240px;
   }
 }
+
+/* Citizen activity and personal signals stay restrained in both themes. */
+.cs-impact-panel { border-color: var(--cs-border); background: var(--cs-bg-card); }
+.cs-impact-value { color: var(--cs-text-heading); font-size: 1.45rem; font-weight: 800; line-height: 1.15; }
+.cs-impact-value span { display: block; margin-top: .3rem; color: var(--cs-text-muted); font-size: .76rem; font-weight: 600; line-height: 1.3; }
+.cs-profile-stat strong { display: block; color: var(--cs-text-heading); font-size: clamp(1.35rem, 4vw, 1.9rem); line-height: 1.1; }
+.cs-profile-stat span { display: block; margin-top: .35rem; color: var(--cs-text-muted); font-size: .8rem; }
+.cs-city-personal-reports { fill: #0b83bd; stroke: rgba(255, 255, 255, .9); stroke-width: 1.6; opacity: .92; }
+.cs-city-personal-report { transform-box: fill-box; transform-origin: center; animation: cs-personal-report-pulse 5.8s ease-in-out infinite; }
+.cs-city-personal-report:nth-child(2n) { animation-delay: -2.7s; }
+.cs-city-personal-report.is-resolved { opacity: .4; animation: none; }
+@keyframes cs-personal-report-pulse { 0%, 100% { transform: scale(.92); opacity: .72; } 50% { transform: scale(1.16); opacity: 1; } }
+html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(12, 25, 40, .94); }
+@media (prefers-reduced-motion: reduce) { .cs-city-personal-report { animation: none !important; } }
 
 @media (max-width: 380px) {
   .cs-story-hero .d-flex.flex-wrap.gap-3.mb-4 {

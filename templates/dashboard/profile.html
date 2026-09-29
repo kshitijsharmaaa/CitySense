@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}My CitySense | CitySense{% endblock %}
+
+{% block content %}
+<section class="cs-page-shell py-4 py-md-5">
+  <div class="container">
+    <header class="cs-surface p-4 p-md-5 mb-4">
+      <div class="small fw-bold text-primary text-uppercase mb-2">My CitySense</div>
+      <h1 class="h2 cs-page-heading mb-2">Your account and civic activity</h1>
+      <p class="text-muted-cs mb-0">A private view of your account details and reports.</p>
+    </header>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <section class="card h-100" aria-labelledby="profile-details-title">
+          <div class="card-header bg-light fw-bold text-dark p-3" id="profile-details-title">Profile</div>
+          <dl class="card-body mb-0 row gy-3">
+            <dt class="col-sm-4 text-muted-cs">Name</dt><dd class="col-sm-8 mb-0">{{ request.user.name }}</dd>
+            <dt class="col-sm-4 text-muted-cs">Email</dt><dd class="col-sm-8 mb-0 text-break">{{ request.user.email }}</dd>
+            <dt class="col-sm-4 text-muted-cs">Role</dt><dd class="col-sm-8 mb-0">{{ request.user.get_role_display }}</dd>
+          </dl>
+        </section>
+      </div>
+      <div class="col-lg-6">
+        <section class="card h-100" aria-labelledby="profile-preferences-title">
+          <div class="card-header bg-light fw-bold text-dark p-3" id="profile-preferences-title">Preferences on this device</div>
+          <dl class="card-body mb-0 row gy-3">
+            <dt class="col-sm-6 text-muted-cs">Theme</dt><dd class="col-sm-6 mb-0" data-profile-theme>Loading</dd>
+            <dt class="col-sm-6 text-muted-cs">Reduced motion</dt><dd class="col-sm-6 mb-0" data-profile-motion>Checking device setting</dd>
+          </dl>
+          <div class="card-footer small text-muted-cs">Theme is saved in this browser. Reduced motion follows your device accessibility setting.</div>
+        </section>
+      </div>
+      <div class="col-12">
+        <section class="card" aria-labelledby="profile-activity-title">
+          <div class="card-header bg-light fw-bold text-dark p-3" id="profile-activity-title">Your activity</div>
+          <div class="card-body">
+            <div class="row g-3 text-center">
+              <div class="col-4"><div class="cs-profile-stat"><strong>{{ stats.total }}</strong><span>Total reports</span></div></div>
+              <div class="col-4"><div class="cs-profile-stat"><strong>{{ stats.resolved }}</strong><span>Resolved</span></div></div>
+              <div class="col-4"><div class="cs-profile-stat"><strong>{{ stats.active }}</strong><span>Active</span></div></div>
+            </div>
+          </div>
+          <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <span class="small text-muted-cs">Statistics come from reports linked to your account.</span>
+            <a class="btn btn-cs-outline btn-sm" href="{% url 'dashboard:index' %}">Back to dashboard</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -582,6 +582,26 @@ class CitizenIssueWorkflowTests(TestCase):
         self.assertEqual(self.client.get(reverse("issues:detail", args=(own.pk,))).status_code, 200)
         self.assertEqual(self.client.get(reverse("issues:detail", args=(other.pk,))).status_code, 404)
 
+    def test_own_issue_detail_explains_the_report_to_incident_relationship(self):
+        incident = Incident.objects.create(title="Pothole near library")
+        issue = Issue.objects.create(
+            reported_by=self.citizen, title="My report", description="Road is damaged",
+            incident=incident,
+        )
+        Issue.objects.create(
+            reported_by=self.other_citizen, title="Another citizen report", description="Same spot",
+            incident=incident,
+        )
+        self.client.force_login(self.citizen)
+
+        response = self.client.get(reverse("issues:detail", args=(issue.pk,)))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your Report")
+        self.assertContains(response, "Linked civic incident")
+        self.assertContains(response, "2 citizen reports associated with this incident")
+        self.assertContains(response, "1 other citizen report is associated with this incident")
+
     def test_citizen_cannot_post_changes_to_issue_detail(self):
         issue = Issue.objects.create(reported_by=self.citizen, title="Own", description="Own report")
         self.client.force_login(self.citizen)

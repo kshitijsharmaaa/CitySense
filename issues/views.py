@@ -287,6 +287,12 @@ def detail(request, pk):
         "case_age": issue_age,
         "case_status": status,
         "case_next_action": issue_progress["next_action"],
+        "is_own_report": request.user.is_citizen,
+        "incident_report_count": incident.issues.count() if incident else 0,
+        "other_citizen_report_count": incident.issues.filter(
+            reported_by__role="CITIZEN"
+        ).exclude(reported_by=request.user).count()
+        if incident and request.user.is_citizen else 0,
     })
 
 

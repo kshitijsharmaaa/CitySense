@@ -39,6 +39,8 @@
       </ol>
     </nav>
 
+    {% if is_own_report %}<div class="small fw-bold text-primary text-uppercase mb-2">Your Report</div>{% endif %}
+
     <div class="row gy-4">
       <div class="col-lg-8">
         <!-- Main Issue Card -->
@@ -46,7 +48,7 @@
           <div class="card-body p-4 p-md-5">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-dark text-white font-monospace fs-6 px-3 py-2">Report ID: {{ issue.issue_code }}</span>
+                <span class="badge bg-dark text-white font-monospace fs-6 px-3 py-2">{% if is_own_report %}Your report{% else %}Report ID{% endif %}: {{ issue.issue_code }}</span>
                 {% if issue.ai_category %}
                   <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-stars me-1"></i>AI · {{ issue.get_ai_category_display }}</span>
                 {% endif %}
@@ -104,9 +106,10 @@
                 <div class="text-center text-primary" aria-hidden="true"><i class="bi bi-arrow-down"></i></div>
                 <div class="small text-muted-cs text-uppercase fw-semibold mt-2" style="letter-spacing:.06em">Linked civic incident</div>
                 <div class="fw-bold fs-5 text-dark font-monospace">{{ issue.incident.incident_code }}</div>
-                <p class="small text-muted-cs mb-0 mt-2">{% if issue.incident.report_count > 1 %}This report is grouped with other reports describing the same civic problem.{% else %}This is currently the only report associated with this incident.{% endif %}</p>
+                <p class="small text-muted-cs mb-0 mt-2">{% if incident_report_count > 1 %}This report is grouped with other reports describing the same civic problem.{% else %}This is currently the only report associated with this incident.{% endif %}</p>
               </div>
-              <div class="small text-muted-cs mb-3"><i class="bi bi-people me-1 text-primary"></i>{{ issue.incident.report_count }} report{{ issue.incident.report_count|pluralize }} associated with this incident</div>
+              <div class="small text-muted-cs mb-3"><i class="bi bi-people me-1 text-primary"></i>{{ incident_report_count }} citizen report{{ incident_report_count|pluralize }} associated with this incident</div>
+              {% if is_own_report and other_citizen_report_count %}<p class="small text-muted-cs">{{ other_citizen_report_count }} other citizen report{{ other_citizen_report_count|pluralize }} {% if other_citizen_report_count == 1 %}is{% else %}are{% endif %} associated with this incident.</p>{% endif %}
               <div class="small text-muted-cs mb-3"><span class="d-block">Incident category</span><strong class="text-dark">{{ issue.incident.get_category_display }}</strong></div>
 
               <div class="mb-3">

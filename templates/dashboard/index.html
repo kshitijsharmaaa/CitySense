@@ -25,8 +25,8 @@
           <div class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-1.5 rounded-pill font-weight-bold mb-2">
           <i class="bi bi-person-badge-fill me-1"></i>{% if request.user.is_admin_user %} CitySense Operations{% else %} YOUR CIVIC ACTIVITY{% endif %}
         </div>
-        <h1 class="h2 cs-page-heading mb-1">{% if request.user.is_admin_user %}CitySense operations{% else %}Your reports{% endif %}</h1>
-        <p class="small fw-semibold text-primary mb-2">{% if request.user.is_admin_user %}Welcome back, {{ request.user.name }}{% else %}Good to see you, {{ request.user.name }}{% endif %}</p>
+        <h1 class="h2 cs-page-heading mb-1">{% if request.user.is_admin_user %}CitySense operations{% else %}{{ greeting }}, {{ first_name }}{% endif %}</h1>
+        <p class="small fw-semibold text-primary mb-2">{% if request.user.is_admin_user %}Welcome back, {{ request.user.name }}{% else %}Your CitySense{% endif %}</p>
         <p class="text-muted-cs mb-0">{% if request.user.is_admin_user %}A view of community reports and incident progress.{% else %}Here’s what’s happening with your civic reports.{% endif %}</p>
       </div>
       <div class="d-flex gap-2">
@@ -36,30 +36,46 @@
       </div>
     </div>
 
+    {% if request.user.is_citizen and stats.total %}
+    <section class="cs-impact-panel card p-3 p-md-4 mb-4" aria-labelledby="impact-title">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div><div class="small fw-bold text-primary text-uppercase">Your Civic Impact</div><h2 id="impact-title" class="h5 fw-bold text-dark mb-0">Your reports are part of the city response</h2></div>
+        <a class="small fw-semibold text-decoration-none" href="{% url 'dashboard:profile' %}">My CitySense <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="row g-3">
+        <div class="col-6 col-lg-3"><div class="cs-impact-value">{{ stats.total }}<span>reports submitted</span></div></div>
+        <div class="col-6 col-lg-3"><div class="cs-impact-value">{{ stats.resolved }}<span>reports resolved</span></div></div>
+        <div class="col-6 col-lg-3"><div class="cs-impact-value">{{ stats.incident_count }}<span>incidents connected</span></div></div>
+        <div class="col-6 col-lg-3"><div class="cs-impact-value">{{ other_report_count }}<span>other reports on those incidents</span></div></div>
+      </div>
+      {% if other_report_count %}<p class="small text-muted-cs mt-3 mb-0">Your report helped identify broader civic activity.</p>{% endif %}
+    </section>
+    {% endif %}
+
     <!-- Quick Metrics Row -->
     <div class="row g-3 mb-4">
       <div class="col-6 col-md-3">
         <div class="card cs-dashboard-metric p-3 h-100">
-          <div class="text-muted-cs small mb-1">{% if request.user.is_admin_user %}Total reports{% else %}Total reports{% endif %}</div>
-          <div class="fw-bold fs-3 text-dark">{{ issues|length }}</div>
+          <div class="text-muted-cs small mb-1">Total reports</div>
+          <div class="fw-bold fs-3 text-dark">{{ stats.total }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card cs-dashboard-metric p-3 h-100">
-          <div class="text-muted-cs small mb-1">Open incidents</div>
-          <div class="fw-bold fs-3 text-warning" id="metric-active-count">0</div>
+          <div class="text-muted-cs small mb-1">{% if request.user.is_admin_user %}Open incidents{% else %}Active / in progress{% endif %}</div>
+          <div class="fw-bold fs-3 text-warning">{{ stats.active }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card cs-dashboard-metric p-3 h-100">
-          <div class="text-muted-cs small mb-1">Resolved incidents</div>
-          <div class="fw-bold fs-3 text-success" id="metric-resolved-count">0</div>
+          <div class="text-muted-cs small mb-1">{% if request.user.is_admin_user %}Resolved incidents{% else %}Resolved reports{% endif %}</div>
+          <div class="fw-bold fs-3 text-success">{{ stats.resolved }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card cs-dashboard-metric p-3 h-100">
-          <div class="text-muted-cs small mb-1">Work in progress</div>
-          <div class="fw-bold fs-3 text-primary" id="metric-progress-count">0</div>
+          <div class="text-muted-cs small mb-1">{% if request.user.is_admin_user %}Work in progress{% else %}Linked to incidents{% endif %}</div>
+          <div class="fw-bold fs-3 text-primary">{% if request.user.is_admin_user %}{{ stats.in_progress }}{% else %}{{ stats.linked }}{% endif %}</div>
         </div>
       </div>
     </div>
@@ -69,7 +85,7 @@
       <div class="col-lg-7">
         <div class="card">
           <div class="card-header bg-light fw-bold text-dark d-flex align-items-center justify-content-between p-3">
-            <span><i class="bi bi-list-stars text-primary me-2"></i>{% if request.user.is_admin_user %} Recent reports{% else %} Your recent reports{% endif %}</span>
+            <span><i class="bi bi-list-stars text-primary me-2"></i>{% if request.user.is_admin_user %} Recent reports{% else %} Your Recent Activity{% endif %}</span>
             <a href="{% url 'issues:list' %}" class="small text-primary text-decoration-none fw-semibold">View All</a>
           </div>
           <div class="card-body p-0">
@@ -99,6 +115,7 @@
                     </div>
                     <h3 class="h6 fw-bold mb-2">{{ issue.title }}</h3>
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      {% if issue.ai_category %}<span class="badge bg-light text-secondary border">{{ issue.get_ai_category_display }}</span>{% elif issue.incident %}<span class="badge bg-light text-secondary border">{{ issue.incident.get_category_display }}</span>{% endif %}
                       {% if issue.incident %}{% include "components/priority_badge.html" with priority=issue.incident.priority %}{% elif issue.ai_priority %}{% include "components/priority_badge.html" with priority=issue.ai_priority %}{% endif %}
                       {% if issue.incident %}<span class="small text-muted-cs">{{ issue.incident.incident_code }}</span>{% endif %}
                     </div>
@@ -111,7 +128,7 @@
               </div>
             {% else %}
               <div class="p-4 text-center">
-                {% include "components/empty_state.html" with title="Your civic story starts here" message="Report a local problem and follow its progress as CitySense brings related reports together." icon="bi-geo-alt" action_text="Report an Issue" action_url="/issues/new/" %}
+                {% if request.user.is_citizen %}{% include "components/empty_state.html" with title="Your CitySense activity starts here." message="See something that needs attention? Report it and help your community respond faster." icon="bi-geo-alt" action_text="Report an Issue" action_url="/issues/new/" %}{% else %}{% include "components/empty_state.html" with title="No reports yet" message="Citizen reports will appear here when they are submitted." icon="bi-inbox" %}{% endif %}
               </div>
             {% endif %}
           </div>
@@ -140,23 +157,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  // Count unique incidents, since multiple reports can refer to one incident.
-  const incidents = new Map();
-  document.querySelectorAll('.report-row[data-incident-id]').forEach(function(row) {
-    incidents.set(row.dataset.incidentId, row.dataset.incidentStatus);
-  });
-  let activeCount = 0;
-  let resolvedCount = 0;
-  let progressCount = 0;
-  incidents.forEach(function(status) {
-    if (status === 'RESOLVED') resolvedCount += 1;
-    else if (status !== 'REJECTED') activeCount += 1;
-    if (status === 'IN_PROGRESS') progressCount += 1;
-  });
-  document.getElementById('metric-active-count').textContent = activeCount;
-  document.getElementById('metric-resolved-count').textContent = resolvedCount;
-  document.getElementById('metric-progress-count').textContent = progressCount;
-
   // Leaflet Map Initialization
   const map = L.map('dashboard-map').setView([28.6139, 77.2090], 11);
 
