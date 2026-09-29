@@ -23,8 +23,12 @@ from PIL import Image
 
 from issues.models import Category, Department, Issue, IssueImage, Priority
 from .intelligence import calculate_incident_severity
-from .models import Incident, IncidentStatus, IncidentStatusHistory
-from .presentation import PRIORITY_AGE_LIMITS, complaint_age, complaint_progress
+from .models import (
+    EscalationLevel, HistoryEventType, Incident, IncidentSLAConfiguration, IncidentStatus,
+    IncidentStatusHistory,
+)
+from .presentation import PRIORITY_AGE_LIMITS, complaint_age, complaint_progress, incident_sla_summary
+from .sla import evaluate_due_escalations
 
 User = get_user_model()
 
@@ -196,6 +200,163 @@ class IncidentStatusHistoryTests(TestCase):
         # Newest first
         self.assertEqual(history[0].pk, h2.pk)
         self.assertEqual(history[1].pk, h1.pk)
+
+
+class IncidentSLATests(TestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.department = Department.objects.create(name="Road SLA")
+        self.l1_officer = User.objects.create_user(
+            email="l1-sla@test.com", name="L1 Officer", password="pass",
+            role=User.Role.ADMIN, officer_level=User.OfficerLevel.L1,
+        )
+        self.l2_officer = User.objects.create_user(
+            email="l2-sla@test.com", name="L2 Officer", password="pass",
+            role=User.Role.ADMIN, officer_level=User.OfficerLevel.L2,
+        )
+        self.operator = User.objects.create_user(
+            email="operator-sla@test.com", name="Original Officer", password="pass",
+            role=User.Role.ADMIN,
+        )
+        self.config = IncidentSLAConfiguration.objects.get(priority=Priority.HIGH, category="")
+        self.config.resolution_days = 2
+        self.config.l2_after_days = 3
+        self.config.save()
+
+    def make_incident(self, *, started_at=None, status=IncidentStatus.IN_PROGRESS, **kwargs):
+        started_at = started_at or self.now
+        return Incident.objects.create(
+            title="SLA tracked pothole", category=Category.POTHOLE, priority=Priority.HIGH,
+            status=status, department=self.department, assigned_to=self.operator,
+            created_at=started_at, **kwargs,
+        )
+
+    def test_deadline_uses_configured_priority_days_and_sla_start(self):
+        incident = self.make_incident()
+        self.assertEqual(incident.sla_started_at, self.now)
+        self.assertEqual(incident.resolution_deadline, self.now + timedelta(days=2))
+
+    def test_category_specific_configuration_overrides_priority_default(self):
+        IncidentSLAConfiguration.objects.create(
+            priority=Priority.HIGH, category=Category.POTHOLE,
+            resolution_days=1, l2_after_days=1,
+        )
+        incident = Incident.objects.create(
+            title="Category-specific SLA", category=Category.POTHOLE, priority=Priority.HIGH,
+            created_at=self.now,
+        )
+        self.assertEqual(incident.resolution_deadline, self.now + timedelta(days=1))
+
+    def test_incident_within_sla_does_not_escalate(self):
+        incident = self.make_incident()
+        count = evaluate_due_escalations(now=self.now + timedelta(days=1))
+        incident.refresh_from_db()
+        self.assertEqual(count, 0)
+        self.assertFalse(incident.sla_overdue)
+        self.assertEqual(incident.escalation_level, EscalationLevel.NORMAL)
+        self.assertFalse(incident.status_history.exists())
+
+    def test_at_deadline_is_due_now_but_not_yet_overdue(self):
+        incident = self.make_incident()
+        summary = incident_sla_summary(incident, now=incident.resolution_deadline, history=[])
+        count = evaluate_due_escalations(now=incident.resolution_deadline)
+        incident.refresh_from_db()
+        self.assertEqual(summary["remaining_text"], "Due now")
+        self.assertEqual(count, 0)
+        self.assertFalse(incident.sla_overdue)
+
+    def test_overdue_incident_escalates_to_l1_and_routes_to_designated_officer(self):
+        incident = self.make_incident()
+        checked_at = incident.resolution_deadline + timedelta(seconds=1)
+        count = evaluate_due_escalations(now=checked_at)
+        incident.refresh_from_db()
+        event = incident.status_history.get(event_type=HistoryEventType.ESCALATION)
+        self.assertEqual(count, 1)
+        self.assertTrue(incident.sla_overdue)
+        self.assertEqual(incident.escalation_level, EscalationLevel.L1)
+        self.assertEqual(incident.assigned_to, self.l1_officer)
+        self.assertEqual(incident.l1_escalated_at, checked_at)
+        self.assertEqual(event.previous_escalation_level, EscalationLevel.NORMAL)
+        self.assertEqual(event.new_escalation_level, EscalationLevel.L1)
+        self.assertEqual(event.assigned_from, self.operator)
+        self.assertEqual(event.assigned_to, self.l1_officer)
+        self.assertEqual(event.department_from, self.department)
+        self.assertEqual(event.department_to, self.department)
+        self.assertIn("Resolution SLA passed", event.reason)
+        self.assertIsNone(event.changed_by)  # null actor is the automatic CitySense system
+
+    def test_unresolved_l1_escalates_to_l2_after_configured_period(self):
+        incident = self.make_incident()
+        l1_time = incident.resolution_deadline + timedelta(minutes=1)
+        evaluate_due_escalations(now=l1_time)
+        l2_time = l1_time + timedelta(days=3)
+        count = evaluate_due_escalations(now=l2_time)
+        incident.refresh_from_db()
+        history = list(incident.status_history.filter(event_type=HistoryEventType.ESCALATION).order_by("created_at"))
+        self.assertEqual(count, 1)
+        self.assertEqual(incident.escalation_level, EscalationLevel.L2)
+        self.assertEqual(incident.assigned_to, self.l2_officer)
+        self.assertEqual(incident.l2_escalated_at, l2_time)
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[1].previous_escalation_level, EscalationLevel.L1)
+        self.assertEqual(history[1].new_escalation_level, EscalationLevel.L2)
+        self.assertEqual(history[1].assigned_from, self.l1_officer)
+        self.assertEqual(history[1].assigned_to, self.l2_officer)
+
+    def test_resolved_and_rejected_incidents_never_escalate(self):
+        for status in (IncidentStatus.RESOLVED, IncidentStatus.REJECTED):
+            with self.subTest(status=status):
+                incident = self.make_incident(
+                    status=status, resolved_at=self.now + timedelta(days=5),
+                )
+                evaluate_due_escalations(now=incident.resolution_deadline + timedelta(days=10))
+                incident.refresh_from_db()
+                self.assertEqual(incident.escalation_level, EscalationLevel.NORMAL)
+                self.assertFalse(incident.status_history.filter(event_type=HistoryEventType.ESCALATION).exists())
+
+    def test_repeated_checks_do_not_duplicate_escalation_history(self):
+        incident = self.make_incident()
+        checked_at = incident.resolution_deadline + timedelta(days=1)
+        self.assertEqual(evaluate_due_escalations(now=checked_at), 1)
+        self.assertEqual(evaluate_due_escalations(now=checked_at), 0)
+        self.assertEqual(incident.status_history.filter(event_type=HistoryEventType.ESCALATION).count(), 1)
+
+    def test_resolution_outcome_reflects_sla_and_escalation_history(self):
+        incident = self.make_incident()
+        incident.status = IncidentStatus.RESOLVED
+        incident.resolved_at = incident.resolution_deadline + timedelta(days=1)
+        summary = incident_sla_summary(incident, now=incident.resolved_at, history=[])
+        self.assertEqual(summary["resolution_outcome"], "Resolved after SLA, before escalation")
+
+    def test_admin_dashboard_access_runs_escalation_and_shows_routing(self):
+        incident = self.make_incident()
+        incident.resolution_deadline = self.now - timedelta(seconds=1)
+        incident.save(update_fields=("resolution_deadline",))
+        self.client.force_login(self.operator)
+        response = self.client.get(reverse("incidents:admin_dashboard"))
+        incident.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(incident.escalation_level, EscalationLevel.L1)
+        self.assertContains(response, "SLA deadline")
+        self.assertContains(response, "L1 Officer")
+
+    def test_citizen_sees_delay_without_internal_escalation_hierarchy(self):
+        citizen = User.objects.create_user(
+            email="citizen-sla@test.com", name="Citizen", password="pass",
+        )
+        incident = self.make_incident()
+        incident.resolution_deadline = self.now - timedelta(seconds=1)
+        incident.save(update_fields=("resolution_deadline",))
+        evaluate_due_escalations(now=self.now)
+        Issue.objects.create(
+            reported_by=citizen, title="Pothole", description="Road damage", incident=incident,
+        )
+        self.client.force_login(citizen)
+        response = self.client.get(reverse("incidents:detail", args=(incident.pk,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Delayed")
+        self.assertNotContains(response, "L1 Officer")
+        self.assertNotContains(response, "Level 1")
 
 
 class IncidentSeverityTests(TestCase):

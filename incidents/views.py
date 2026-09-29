@@ -9,23 +9,26 @@ from accounts.decorators import admin_required, citizen_or_admin_required
 from issues.models import Issue
 
 from .forms import IncidentFilterForm, IncidentReviewForm
-from .models import Incident, IncidentStatusHistory
-from .presentation import complaint_age, complaint_progress
+from .models import HistoryEventType, Incident, IncidentStatusHistory
+from .presentation import complaint_age, complaint_progress, incident_sla_summary
+from .sla import evaluate_due_escalations
 from .workflow import update_incident_review
 
 
 @citizen_or_admin_required
 @require_GET
 def detail(request, pk):
-    incidents = Incident.objects.select_related("department").prefetch_related(
+    incidents = Incident.objects.select_related("department", "assigned_to").prefetch_related(
         "status_history", "issues"
     )
     if request.user.is_citizen:
         incidents = incidents.filter(issues__reported_by=request.user)
     incident = get_object_or_404(incidents.distinct(), pk=pk)
     history = list(incident.status_history.all())
+    if request.user.is_citizen:
+        history = [entry for entry in history if entry.event_type != HistoryEventType.ESCALATION]
     age = complaint_age(incident.created_at, incident.priority, status=incident.status)
-    if request.user.is_citizen and age and age["state"] != "overdue":
+    if request.user.is_citizen:
         age = None
     progress = complaint_progress(incident.status, history)
     return render(request, "incidents/detail.html", {
@@ -33,7 +36,9 @@ def detail(request, pk):
         "case_progress": progress,
         "case_age": age,
         "latest_update": history[0] if history else None,
+        "status_history": history,
         "case_next_action": progress["next_action"],
+        "sla_summary": incident_sla_summary(incident, history=history),
     })
 
 
@@ -41,6 +46,7 @@ def detail(request, pk):
 @require_GET
 def admin_dashboard(request):
     """List incidents with validated, server-side filters for ADMIN users."""
+    evaluate_due_escalations()
     filters = IncidentFilterForm(request.GET or None)
     incidents = Incident.objects.select_related('department', 'assigned_to').all()
     if filters.is_bound and filters.is_valid():
@@ -57,8 +63,11 @@ def admin_dashboard(request):
     page_obj = Paginator(incidents.order_by('-updated_at', '-pk'), 25).get_page(
         request.GET.get('page')
     )
+    dashboard_incidents = list(page_obj.object_list)
+    for incident in dashboard_incidents:
+        incident.sla_summary = incident_sla_summary(incident)
     return render(request, 'incidents/admin_dashboard.html', {
-        'incidents': page_obj.object_list,
+        'incidents': dashboard_incidents,
         'page_obj': page_obj,
         'filters': filters,
     })
@@ -68,6 +77,8 @@ def admin_dashboard(request):
 @require_http_methods(['GET', 'POST'])
 def admin_detail(request, pk):
     """Review linked citizen reports and update administrator-owned fields."""
+    if request.method == 'GET':
+        evaluate_due_escalations()
     incident = get_object_or_404(
         Incident.objects.select_related('department', 'assigned_to').prefetch_related(
             Prefetch(
@@ -76,7 +87,9 @@ def admin_detail(request, pk):
             ),
             Prefetch(
                 'status_history',
-                queryset=IncidentStatusHistory.objects.select_related('changed_by'),
+                queryset=IncidentStatusHistory.objects.select_related(
+                    'changed_by', 'assigned_from', 'assigned_to', 'department_from', 'department_to',
+                ),
             ),
         ),
         pk=pk,
@@ -99,5 +112,8 @@ def admin_detail(request, pk):
         'case_progress': complaint_progress(incident.status, list(incident.status_history.all())),
         'case_age': complaint_age(incident.created_at, incident.priority, status=incident.status),
         'case_next_action': complaint_progress(incident.status, list(incident.status_history.all()))['next_action'],
+        'sla_summary': incident_sla_summary(
+            incident, history=list(incident.status_history.all()),
+        ),
         'form': form,
     })

@@ -6,6 +6,7 @@ from django.utils import timezone
 from issues.models import Priority
 
 from .models import IncidentStatus
+from .models import EscalationLevel, HistoryEventType
 
 
 PROGRESS_STAGES = (
@@ -72,9 +73,78 @@ def complaint_age(started_at, priority, *, status, now=None):
     }
 
 
+def incident_sla_summary(incident, *, now=None, history=None):
+    """Build admin SLA labels and a citizen-safe status from stored SLA data."""
+    now = now or timezone.now()
+    history = list(history if history is not None else incident.status_history.all())
+    escalation_events = sorted(
+        (entry for entry in history if entry.event_type == HistoryEventType.ESCALATION),
+        key=lambda entry: entry.created_at,
+    )
+    if incident.sla_started_at:
+        escalation_events = [
+            entry for entry in escalation_events if entry.created_at >= incident.sla_started_at
+        ]
+    closed = incident.status in (IncidentStatus.RESOLVED, IncidentStatus.REJECTED)
+    deadline = incident.resolution_deadline
+    overdue_end = incident.resolved_at if incident.status == IncidentStatus.RESOLVED else now
+    overdue = bool(deadline and overdue_end and overdue_end > deadline)
+    remaining = deadline - now if deadline and not closed else None
+    overdue_duration = overdue_end - deadline if deadline and overdue else None
+
+    resolution_outcome = ""
+    if incident.status == IncidentStatus.RESOLVED and incident.resolved_at:
+        if deadline and incident.resolved_at <= deadline:
+            resolution_outcome = "Resolved within SLA"
+        elif incident.l2_escalated_at and incident.resolved_at >= incident.l2_escalated_at:
+            resolution_outcome = "Resolved after L2 escalation"
+        elif incident.l1_escalated_at and incident.resolved_at >= incident.l1_escalated_at:
+            resolution_outcome = "Resolved after L1 escalation"
+        else:
+            resolution_outcome = "Resolved after SLA, before escalation"
+
+    if incident.status == IncidentStatus.RESOLVED:
+        citizen_status = "Resolved"
+    elif incident.status == IncidentStatus.REJECTED:
+        citizen_status = "Closed"
+    elif overdue:
+        citizen_status = "Delayed"
+    elif incident.escalation_level != EscalationLevel.NORMAL:
+        citizen_status = "Escalated"
+    elif incident.status in (IncidentStatus.ASSIGNED, IncidentStatus.IN_PROGRESS):
+        citizen_status = "In Progress" if incident.status == IncidentStatus.IN_PROGRESS else "Assigned"
+    else:
+        citizen_status = "Reported"
+
+    first_escalation = escalation_events[0] if escalation_events else None
+    last_escalation = escalation_events[-1] if escalation_events else None
+    return {
+        "deadline": deadline,
+        "remaining_text": (
+            _duration_label(remaining) if remaining and remaining > timedelta(0)
+            else "Due now" if remaining == timedelta(0) and not closed
+            else ""
+        ),
+        "overdue": overdue,
+        "overdue_text": _duration_label(overdue_duration) if overdue_duration else "",
+        "escalation_level": incident.get_escalation_level_display(),
+        "l1_escalated_at": incident.l1_escalated_at,
+        "l2_escalated_at": incident.l2_escalated_at,
+        "current_officer": incident.assigned_to,
+        "original_officer": first_escalation.assigned_from if first_escalation else incident.assigned_to,
+        "original_department": first_escalation.department_from if first_escalation else incident.department,
+        "higher_level_officer": last_escalation.assigned_to if last_escalation else None,
+        "resolution_outcome": resolution_outcome,
+        "citizen_status": citizen_status,
+    }
+
+
 def complaint_progress(status, history):
     """Build progress from recorded transitions; never synthesize status events."""
-    entries = sorted(list(history), key=lambda entry: entry.created_at)
+    entries = sorted(
+        (entry for entry in history if getattr(entry, "event_type", HistoryEventType.STATUS) != HistoryEventType.ESCALATION),
+        key=lambda entry: entry.created_at,
+    )
     if status == IncidentStatus.REJECTED:
         latest = entries[-1] if entries else None
         return {
