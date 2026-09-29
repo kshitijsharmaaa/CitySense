@@ -1,0 +1,31 @@
+<nav class="cs-mobile-nav" aria-label="Quick navigation">
+  <a href="{% url 'dashboard:index' %}" class="cs-mobile-nav-item{% if request.resolver_match.namespace == 'dashboard' %} is-current{% endif %}"{% if request.resolver_match.namespace == 'dashboard' %} aria-current="page"{% endif %}>
+    <i class="bi bi-house-door" aria-hidden="true"></i><span>Home</span>
+  </a>
+  <a href="{% url 'issues:list' %}" class="cs-mobile-nav-item{% if request.resolver_match.namespace == 'issues' and request.resolver_match.url_name == 'list' %} is-current{% endif %}"{% if request.resolver_match.namespace == 'issues' and request.resolver_match.url_name == 'list' %} aria-current="page"{% endif %}>
+    <i class="bi bi-list-task" aria-hidden="true"></i><span>My Reports</span>
+  </a>
+  <a href="{% url 'issues:create' %}" class="cs-mobile-nav-report{% if request.resolver_match.namespace == 'issues' and request.resolver_match.url_name == 'create' %} is-current{% endif %}"{% if request.resolver_match.namespace == 'issues' and request.resolver_match.url_name == 'create' %} aria-current="page"{% endif %}>
+    <span class="cs-mobile-nav-plus"><i class="bi bi-plus-lg" aria-hidden="true"></i></span><span>Report</span>
+  </a>
+  <button type="button" class="cs-mobile-nav-item" data-bs-toggle="offcanvas" data-bs-target="#citysenseProfileSheet" aria-controls="citysenseProfileSheet">
+    <i class="bi bi-person-circle" aria-hidden="true"></i><span>Profile</span>
+  </button>
+</nav>
+
+<div class="offcanvas offcanvas-bottom cs-profile-sheet" tabindex="-1" id="citysenseProfileSheet" aria-labelledby="citysenseProfileTitle">
+  <div class="offcanvas-header">
+    <div>
+      <p class="cs-mobile-eyebrow mb-1">Your account</p>
+      <h2 class="offcanvas-title h5 mb-0" id="citysenseProfileTitle">{{ request.user.name }}</h2>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close profile menu"></button>
+  </div>
+  <div class="offcanvas-body pt-0">
+    <a class="cs-profile-action" href="{% url 'dashboard:index' %}"><i class="bi bi-grid-1x2" aria-hidden="true"></i><span>Open my dashboard</span><i class="bi bi-arrow-right ms-auto" aria-hidden="true"></i></a>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="cs-profile-action cs-profile-logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i><span>Log out</span></button>
+    </form>
+  </div>
+</div>
