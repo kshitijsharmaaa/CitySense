@@ -7,13 +7,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts.decorators import admin_required, citizen_or_admin_required
-from incidents.models import Incident, IncidentStatus
+from incidents.models import Incident, IncidentStatus, IncidentStatusHistory, HistoryEventType
 from incidents.services import update_incident_intelligence
+from incidents.presentation import complaint_age, complaint_progress, incident_sla_summary
 from ai_engine.services import triage_issue
 
 from .forms import IssueAdminFilterForm, IssueCreateForm
 from .models import Issue, Priority
-from incidents.presentation import complaint_age, complaint_progress
 from .services import create_issue_with_incident
 
 
@@ -117,6 +117,13 @@ def issue_list(request):
             and priority in (Priority.HIGH, Priority.CRITICAL)
         )
         issue.age = complaint_age(incident.created_at if incident else issue.created_at, priority, status=status)
+        issue.sla_summary = incident_sla_summary(incident, history=[]) if incident else None
+        issue.latest_public_update = (
+            IncidentStatusHistory.objects.filter(
+                incident=incident, event_type=HistoryEventType.STATUS,
+            ).first()
+            if incident else None
+        )
         issue.is_unassigned = not incident or not incident.department or not incident.assigned_to
 
     base = Issue.objects.all()
@@ -267,13 +274,15 @@ def detail(request, pk):
     incident = issue.incident
     status = incident.status if incident else IncidentStatus.REPORTED
     history = list(incident.status_history.all()) if incident else []
+    if request.user.is_citizen:
+        history = [entry for entry in history if entry.event_type == HistoryEventType.STATUS]
     issue_progress = complaint_progress(status, history)
     issue_age = complaint_age(
         incident.created_at if incident else issue.created_at,
         incident.priority if incident else issue.ai_priority,
         status=status,
     )
-    if request.user.is_citizen and issue_age and issue_age["state"] != "overdue":
+    if request.user.is_citizen:
         issue_age = None
     return render(request, "issues/detail.html", {
         "issue": issue,
@@ -281,6 +290,7 @@ def detail(request, pk):
         "case_age": issue_age,
         "case_status": status,
         "case_next_action": issue_progress["next_action"],
+        "sla_summary": incident_sla_summary(incident, history=history) if incident else None,
     })
 
 

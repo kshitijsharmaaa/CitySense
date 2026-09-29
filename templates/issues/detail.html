@@ -92,7 +92,7 @@
           <div class="card mb-4">
             <div class="card-header bg-light fw-bold text-dark d-flex align-items-center justify-content-between">
               <span><i class="bi bi-diagram-3-fill text-primary me-1"></i> Associated Incident</span>
-              {% include "components/status_badge.html" with status=issue.incident.status %}
+              <span>{% include "components/status_badge.html" with status=issue.incident.status %}{% if not request.user.is_admin_user and sla_summary.citizen_status == "Delayed" %}<span class="badge text-bg-warning ms-1">Delayed</span>{% elif not request.user.is_admin_user and sla_summary.citizen_status == "Escalated" %}<span class="badge text-bg-warning ms-1">Escalated</span>{% endif %}</span>
             </div>
             <div class="card-body p-4">
               <div class="mb-3">
@@ -111,7 +111,8 @@
                 <span class="small text-muted-cs d-block mb-1">Assigned Priority:</span>
                 {% include "components/priority_badge.html" with priority=issue.incident.priority %}
               </div>
-              <div class="mb-3"><span class="small text-muted-cs d-block mb-1">Assigned Staff Member:</span><strong>{{ issue.incident.assigned_to|default:"Not assigned yet" }}</strong></div>
+              {% if request.user.is_admin_user or issue.incident.escalation_level == "NORMAL" %}<div class="mb-3"><span class="small text-muted-cs d-block mb-1">Assigned Staff Member:</span><strong>{{ issue.incident.assigned_to|default:"Not assigned yet" }}</strong></div>{% endif %}
+              {% if not request.user.is_admin_user and sla_summary.citizen_status == "Delayed" %}<div class="alert alert-warning py-2" role="status">Taking longer than expected: this incident is delayed. Your report remains active with the response team.</div>{% endif %}
               {% if issue.incident.status == "RESOLVED" or issue.incident.resolution_notes or issue.incident.resolution_image or issue.incident.resolved_at %}
                 <div id="resolution-information" class="border-top pt-3 mb-3">
                   <h3 class="h6 fw-bold text-dark">Resolution information</h3>
@@ -120,7 +121,7 @@
                   {% if issue.incident.resolution_image %}<img src="{{ issue.incident.resolution_image.url }}" alt="Photo showing the completed civic repair" class="img-fluid rounded border mb-2" loading="lazy">{% endif %}
                   {% if issue.incident.resolved_at %}<p class="small mb-2"><strong>Resolved:</strong> {{ issue.incident.resolved_at|date:"M j, Y, g:i A" }}</p>{% endif %}
                   {% if issue.incident.department %}<p class="small mb-2"><strong>Assigned Department:</strong> {{ issue.incident.department.name }}</p>{% endif %}
-                  {% if issue.incident.assigned_to %}<p class="small mb-0"><strong>Assigned Staff Member:</strong> {{ issue.incident.assigned_to.name }}</p>{% endif %}
+                  {% if issue.incident.assigned_to %}{% if request.user.is_admin_user or issue.incident.escalation_level == "NORMAL" %}<p class="small mb-0"><strong>Assigned Staff Member:</strong> {{ issue.incident.assigned_to.name }}</p>{% endif %}{% endif %}
                 </div>
               {% endif %}
 

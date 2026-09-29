@@ -53,6 +53,11 @@ class CitySenseUser(AbstractBaseUser, PermissionsMixin):
         CITIZEN = "CITIZEN", "Citizen"
         ADMIN = "ADMIN", "Administrator"
 
+    class OfficerLevel(models.TextChoices):
+        STANDARD = "STANDARD", "Standard officer"
+        L1 = "L1", "Level 1 officer"
+        L2 = "L2", "Level 2 officer"
+
     # Core identity fields
     email = models.EmailField(unique=True, verbose_name="Email address")
     name = models.CharField(max_length=150, verbose_name="Full name")
@@ -61,6 +66,13 @@ class CitySenseUser(AbstractBaseUser, PermissionsMixin):
         choices=Role.choices,
         default=Role.CITIZEN,
         verbose_name="Role",
+    )
+    officer_level = models.CharField(
+        max_length=10,
+        choices=OfficerLevel.choices,
+        default=OfficerLevel.STANDARD,
+        verbose_name="Officer level",
+        help_text="Escalation designation for admin accounts; citizens remain standard officers.",
     )
 
     # Django internals — required for admin and permission support

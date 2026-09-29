@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import Incident, IncidentStatus, IncidentStatusHistory
+from .sla import set_sla_schedule
 
 
 @transaction.atomic
@@ -22,14 +23,19 @@ def update_incident_review(*, incident_id, cleaned_data, changed_by):
     if new_status == IncidentStatus.RESOLVED:
         if old_status != IncidentStatus.RESOLVED or incident.resolved_at is None:
             incident.resolved_at = timezone.now()
+        if incident.resolution_deadline and incident.resolved_at > incident.resolution_deadline:
+            incident.sla_overdue = True
     elif old_status == IncidentStatus.RESOLVED:
         # If an incident is reopened, retain the notes but clear the timestamp
         # indicating its current unresolved state.
         incident.resolved_at = None
+        if new_status != IncidentStatus.REJECTED:
+            set_sla_schedule(incident, started_at=timezone.now())
 
     incident.save(update_fields=(
         'department', 'assigned_to', 'status', 'resolution_notes', 'resolution_image',
-        'resolved_at', 'updated_at',
+        'resolved_at', 'sla_started_at', 'resolution_deadline', 'sla_overdue',
+        'escalation_level', 'l1_escalated_at', 'l2_escalated_at', 'updated_at',
     ))
 
     if old_status != new_status:

@@ -30,6 +30,7 @@ tracking.
 - Incident severity calculation
 - Admin incident review, department/operator assignment, status history,
   resolution, and reopen workflow
+- Configurable incident SLAs with automatic, audited L1/L2 escalation
 - Citizen progress tracking and map views
 - Responsive Django Templates, Bootstrap 5, and vanilla JavaScript UI
 
@@ -50,6 +51,20 @@ duplicate reports do not overwrite existing Incident fields. If the provider
 is unavailable or returns invalid output, deterministic keyword fallback
 keeps report submission working. Gemini configuration is server-side through
 `AI_API_KEY`, `AI_MODEL`, and `AI_TIMEOUT_SECONDS`.
+
+### Incident SLAs and escalation
+
+New Incidents start their SLA clock when created. Priority defaults are seeded
+as Critical: 1 day, High: 3 days, Medium: 7 days, and Low: 14 days. Admins can
+change these values and the L1-to-L2 wait period in Django admin under
+**Incident SLA configurations**; a category-specific row overrides its
+priority-wide default. L1-to-L2 defaults are 1, 2, 3, and 5 days respectively.
+Designate active ADMIN accounts as L1 or L2 officers in the user admin. On
+admin dashboard or incident review access, CitySense checks unresolved cases,
+marks overdue SLAs, routes them to the designated officer, and records each
+escalation in the incident history. This access-triggered check avoids a
+separate worker service; an overdue case is evaluated the next time an admin
+opens the operations dashboard or review page.
 
 ## Deploy to Render
 

@@ -19,8 +19,8 @@ class CitySenseUserAdmin(UserAdmin):
     model = CitySenseUser
 
     # Columns shown in the list view
-    list_display = ("email", "name", "role", "is_staff", "is_active", "created_at")
-    list_filter = ("role", "is_staff", "is_active")
+    list_display = ("email", "name", "role", "officer_level", "is_staff", "is_active", "created_at")
+    list_filter = ("role", "officer_level", "is_staff", "is_active")
     search_fields = ("email", "name")
     ordering = ("-created_at",)
 
@@ -29,6 +29,7 @@ class CitySenseUserAdmin(UserAdmin):
         (None, {"fields": ("email", "password")}),
         ("Personal info", {"fields": ("name",)}),
         ("Role", {"fields": ("role",)}),
+        ("Officer hierarchy", {"fields": ("officer_level",)}),
         (
             "Permissions",
             {
@@ -50,7 +51,7 @@ class CitySenseUserAdmin(UserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("email", "name", "role", "password1", "password2"),
+                "fields": ("email", "name", "role", "officer_level", "password1", "password2"),
             },
         ),
     )

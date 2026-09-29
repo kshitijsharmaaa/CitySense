@@ -75,6 +75,7 @@
                 </span>
                 {% include "components/status_badge.html" with status=incident.status %}
                 {% include "components/priority_badge.html" with priority=incident.priority %}
+                {% if sla_summary.citizen_status == "Delayed" %}<span class="badge text-bg-warning">Delayed</span>{% elif sla_summary.citizen_status == "Escalated" %}<span class="badge text-bg-warning">Escalated</span>{% endif %}
               </div>
               <span class="text-muted-cs small"><i class="bi bi-calendar3 me-1"></i>Opened {{ incident.created_at|date:"M d, Y" }}</span>
             </div>
@@ -101,7 +102,7 @@
             </div>
 
             {% include "components/progress_tracker.html" %}
-            {% if incident.assigned_to %}<p class="small text-muted-cs"><strong>Assigned staff member:</strong> {{ incident.assigned_to }}</p>{% endif %}
+            {% if incident.assigned_to and incident.escalation_level == "NORMAL" %}<p class="small text-muted-cs"><strong>Assigned staff member:</strong> {{ incident.assigned_to }}</p>{% endif %}
 
             {% if incident.status == "RESOLVED" %}
               <div class="mt-4 p-3 bg-success bg-opacity-10 border border-success-subtle rounded" role="status">
@@ -126,9 +127,9 @@
             <i class="bi bi-clock-history text-primary me-2"></i> Status history
           </div>
           <div class="card-body p-4">
-            {% if incident.status_history.all %}
+            {% if status_history %}
               <div class="timeline-container ms-2">
-                {% for history in incident.status_history.all %}
+                {% for history in status_history %}
                   <div class="timeline-item">
                     <div class="timeline-dot"></div>
                     <div class="d-flex align-items-center justify-content-between mb-1">
