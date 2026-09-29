@@ -1,0 +1,52 @@
+{# Decorative civic map layer shared by authenticated and authentication screens. #}
+{% with route=request.resolver_match.url_name %}
+<div class="cs-living-city cs-living-city--{% if route == 'index' and request.resolver_match.app_name == 'dashboard' %}{% if request.user.is_admin_user %}admin{% else %}dashboard{% endif %}{% elif route == 'create' %}report{% elif route == 'detail' or route == 'admin_detail' %}detail{% elif route == 'admin_dashboard' %}admin{% elif route == 'login' or route == 'register' %}auth{% else %}default{% endif %}" aria-hidden="true">
+  <div class="cs-living-city__wash cs-living-city__wash--one"></div>
+  <div class="cs-living-city__wash cs-living-city__wash--two"></div>
+  <div class="cs-living-city__wash cs-living-city__wash--three"></div>
+  <svg class="cs-living-city__network" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" focusable="false">
+    <defs>
+      <g id="cs-living-city-pin-shape">
+        <path class="cs-living-city__pin-head" d="M0 -12c6.3 0 10.5 4.4 10.5 10.1C10.5 4.8 0 14 0 14S-10.5 4.8-10.5-1.9C-10.5-7.6-6.3-12 0-12Z" />
+        <circle class="cs-living-city__pin-center" cy="-2" r="2.5" />
+      </g>
+    </defs>
+    <g class="cs-living-city__routes" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path class="cs-city-route cs-city-route--main" d="M24 278C86 270 115 218 184 224S278 302 342 286 435 203 506 226 630 319 705 289 810 207 884 231 1010 320 1178 268" />
+      <path class="cs-city-route cs-city-route--west" d="M342 286C351 350 381 400 442 444S552 545 604 588" />
+      <path class="cs-city-route cs-city-route--east" d="M705 289C733 348 776 399 842 429S958 408 1002 350 1037 294 1064 276" />
+      <path class="cs-city-route cs-city-route--north cs-city-route--mobile-hide" d="M506 226C526 166 572 126 639 117S757 138 798 171 848 218 884 231" />
+      <path class="cs-city-route cs-city-route--south" d="M442 444C382 509 302 564 208 579S414 635 604 588" />
+      <path class="cs-city-route cs-city-route--ops cs-city-route--admin" d="M604 588C697 553 794 566 906 606S1061 615 1178 565" />
+      <path class="cs-city-route cs-city-route--north-ops cs-city-route--admin cs-city-route--mobile-hide" d="M884 231C922 177 970 132 1034 125S1118 154 1174 190" />
+    </g>
+    <g class="cs-living-city__secondary" aria-hidden="true">
+      <circle cx="111" cy="438" r="2.2"/><circle cx="285" cy="469" r="2.2"/><circle cx="748" cy="670" r="2.2"/><circle cx="1092" cy="493" r="2.2"/>
+    </g>
+    <g class="cs-living-city__pins">
+      <g class="cs-city-pin cs-city-pin--01" transform="translate(24 278)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--02" transform="translate(184 224)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--03" transform="translate(342 286)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--04" transform="translate(506 226)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--05" transform="translate(705 289)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--06" transform="translate(884 231)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--07" transform="translate(1178 268)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--08" transform="translate(442 444)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--09" transform="translate(604 588)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--10 cs-city-pin--mobile-hide" transform="translate(842 429)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--11 cs-city-pin--mobile-hide" transform="translate(208 579)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--12 cs-city-pin--admin-only" transform="translate(906 606)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+      <g class="cs-city-pin cs-city-pin--13 cs-city-pin--admin-only" transform="translate(1034 125)"><circle class="cs-city-pin__ripple" r="12"/><use href="#cs-living-city-pin-shape" /></g>
+    </g>
+    <g class="cs-living-city__signals">
+      <circle class="cs-city-signal-dot cs-city-signal-dot--main" r="3.2" />
+      <circle class="cs-city-signal-dot cs-city-signal-dot--west" r="2.8" />
+      <circle class="cs-city-signal-dot cs-city-signal-dot--east" r="2.8" />
+      <circle class="cs-city-signal-dot cs-city-signal-dot--north" r="2.6" />
+      <circle class="cs-city-signal-dot cs-city-signal-dot--ops" r="2.8" />
+      <circle class="cs-city-signal-dot cs-city-signal-dot--south" r="2.8" />
+    </g>
+  </svg>
+  <div class="cs-living-city__signal" aria-hidden="true"></div>
+</div>
+{% endwith %}

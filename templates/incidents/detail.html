@@ -101,6 +101,13 @@
               </div>
             </div>
 
+            {% if incident.severity_score != None %}
+              <div class="border rounded-3 p-3 mb-3" aria-label="Incident severity score">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><span class="small fw-semibold text-dark">Severity score</span><span class="fw-bold text-primary">{{ incident.severity_score|floatformat:1 }} <span class="small fw-normal text-muted-cs">/ 100</span></span></div>
+                <div class="progress cs-severity-meter" role="progressbar" aria-label="Incident severity score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ incident.severity_score|floatformat:0 }}"><div class="progress-bar bg-primary" style="width:{{ incident.severity_score }}%"></div></div>
+                <div class="d-flex justify-content-between small text-muted-cs mt-2"><span>Lower</span><span>Moderate</span><span>High</span><span>Very high</span></div>
+              </div>
+            {% endif %}
             {% include "components/progress_tracker.html" %}
             {% if incident.assigned_to and incident.escalation_level == "NORMAL" %}<p class="small text-muted-cs"><strong>Assigned staff member:</strong> {{ incident.assigned_to }}</p>{% endif %}
 
@@ -189,6 +196,19 @@
                     <span class="small text-muted-cs">{{ issue_item.created_at|date:"M d" }}</span>
                   </div>
                   <div class="fw-semibold text-dark small">{{ issue_item.title }}</div>
+                  {% if issue_item.ai_category or issue_item.ai_priority or issue_item.ai_department or issue_item.ai_confidence != None or issue_item.ai_summary %}
+                    <div class="mt-2 pt-2 border-top">
+                      <div class="small text-primary fw-semibold mb-1"><i class="bi bi-stars me-1"></i>CitySense AI suggestions</div>
+                      <div class="d-flex flex-wrap align-items-center gap-2 small">
+                        {% if issue_item.ai_category %}<span class="text-muted-cs">{{ issue_item.get_ai_category_display }}</span>{% endif %}
+                        {% if issue_item.ai_priority %}{% include "components/priority_badge.html" with priority=issue_item.ai_priority %}{% endif %}
+                        {% if issue_item.ai_department %}<span class="text-muted-cs">{{ issue_item.ai_department.name }}</span>{% endif %}
+                        {% if issue_item.ai_confidence != None %}<span class="text-muted-cs">Confidence: {% if issue_item.ai_confidence >= 0.8 %}High{% elif issue_item.ai_confidence >= 0.55 %}Moderate{% else %}Review recommended{% endif %}</span>{% endif %}
+                      </div>
+                      {% if issue_item.ai_summary %}<p class="small text-muted-cs mt-1 mb-0">{{ issue_item.ai_summary }}</p>{% endif %}
+                      <p class="small text-muted-cs mb-0 mt-1">Suggestions support review; the incident values above reflect its current state.</p>
+                    </div>
+                  {% endif %}
                 </a>
               {% empty %}
                 <div class="p-3 text-center text-muted-cs small">No linked reports.</div>

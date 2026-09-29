@@ -21,7 +21,7 @@ from django.urls import reverse
 from datetime import timedelta
 from PIL import Image
 
-from issues.models import Category, Department, Issue, Priority
+from issues.models import Category, Department, Issue, IssueImage, Priority
 from .intelligence import calculate_incident_severity
 from .models import (
     EscalationLevel, HistoryEventType, Incident, IncidentSLAConfiguration, IncidentStatus,
@@ -478,6 +478,7 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertFalse(self.incident.status_history.exists())
 
     def test_admin_can_view_dashboard_and_review_linked_reports(self):
+        IssueImage.objects.create(issue=self.issue, image=self.resolution_photo(), position=0)
         self.client.force_login(self.admin)
         dashboard_response = self.client.get(reverse("incidents:admin_dashboard"))
         self.assertEqual(dashboard_response.status_code, 200)
@@ -486,6 +487,7 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(list(detail_response.context["issues"]), [self.issue])
         self.assertEqual(detail_response.context["incident"].severity_score, 72.5)
+        self.assertContains(detail_response, "Photo 1 attached to")
 
     def test_dashboard_filters_status_priority_category_and_department(self):
         other_department = Department.objects.create(name="Other Department")
@@ -566,6 +568,46 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertEqual(history.new_status, IncidentStatus.RESOLVED)
         self.assertEqual(history.changed_by, self.admin)
         self.assertEqual(history.comment, "Resolution verified on site.")
+        self.assertFalse(self.incident.resolution_image)
+
+    def test_incident_update_without_resolution_photo_keeps_field_empty(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(resolution_notes="Routine assignment update."),
+        )
+        self.assertRedirects(response, reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.resolution_notes, "Routine assignment update.")
+        self.assertFalse(self.incident.resolution_image)
+
+    def test_existing_resolution_photo_is_preserved_when_reopening_without_upload(self):
+        self.incident.status = IncidentStatus.RESOLVED
+        self.incident.resolved_at = timezone.now()
+        self.incident.resolution_image.save("existing-resolution.jpg", self.resolution_photo(), save=True)
+        original_name = self.incident.resolution_image.name
+
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            self.post_data(status=IncidentStatus.IN_PROGRESS, resolution_notes="Work requires another visit."),
+        )
+        self.assertRedirects(response, reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.status, IncidentStatus.IN_PROGRESS)
+        self.assertEqual(self.incident.resolution_image.name, original_name)
+        self.assertTrue(self.incident.resolution_image.storage.exists(original_name))
+
+    def test_explicit_resolution_photo_clear_control_clears_image(self):
+        self.incident.resolution_image.save("existing-resolution.jpg", self.resolution_photo(), save=True)
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            {**self.post_data(), "resolution_image-clear": "on"},
+        )
+        self.assertRedirects(response, reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.incident.refresh_from_db()
+        self.assertFalse(self.incident.resolution_image)
 
     def test_admin_can_upload_resolution_photo(self):
         self.client.force_login(self.admin)

@@ -12,7 +12,7 @@ from .validators import validate_report_draft, validate_triage_result
 logger = logging.getLogger(__name__)
 
 
-def triage_issue(*, title, description, image=None, generate_report=False):
+def triage_issue(*, title, description, image=None, images=None, generate_report=False):
     """Return validated AI recommendations, or deterministic fallback values.
 
     Provider calls happen before issue creation starts its database transaction.
@@ -31,6 +31,7 @@ def triage_issue(*, title, description, image=None, generate_report=False):
             title=title,
             description=description,
             image=image,
+            images=images,
             generate_report=generate_report,
         )
         return validate_report_draft(raw_response) if generate_report else validate_triage_result(raw_response)

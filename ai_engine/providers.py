@@ -9,15 +9,20 @@ from PIL import Image, ImageOps
 from .prompts import build_triage_prompt
 
 
-def generate_with_gemini(*, title, description, image=None, generate_report=False):
+def generate_with_gemini(*, title, description, image=None, images=None, generate_report=False):
     """Return the provider's raw text response; callers must validate it."""
     # Lazy import keeps the app usable when the optional provider package is absent.
     from google import genai
     from google.genai import errors, types
 
+    image_set = list(images or [])
+    if image is not None:
+        image_set.insert(0, image)
+    if len(image_set) > 5:
+        raise ValueError("Gemini triage supports at most five report photos.")
     prompt = build_triage_prompt(title=title, description=description, generate_report=generate_report)
     parts = [types.Part.from_text(text=prompt)]
-    if image is not None:
+    for image in image_set:
         # UploadedFile objects are consumed again by Issue.save(); always read
         # from the start and leave them ready for Django's subsequent save.
         image.seek(0)

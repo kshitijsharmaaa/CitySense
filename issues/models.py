@@ -195,3 +195,18 @@ class Issue(models.Model):
             Issue.objects.filter(pk=self.pk).update(issue_code=self.issue_code)
         else:
             super().save(*args, **kwargs)
+
+
+class IssueImage(models.Model):
+    """Additional ordered evidence photos; Issue.image remains for legacy reports."""
+
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="issues/images/%Y/%m/related/")
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["position", "created_at", "pk"]
+
+    def __str__(self):
+        return f"Photo {self.position + 1} for {self.issue.issue_code}"

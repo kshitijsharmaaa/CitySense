@@ -3,10 +3,29 @@ from django import forms
 from ai_engine.prompts import ALLOWED_DEPARTMENTS
 from citysense.image_uploads import MAX_IMAGE_SIZE, validate_city_image
 from incidents.models import Incident, IncidentStatus
-from .models import Category, Department, Issue, Priority
+from .models import Category, Department, Issue, IssueImage, Priority
+
+
+MAX_ISSUE_IMAGES = 5
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    widget = MultipleFileInput
+
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        if isinstance(data, (list, tuple)):
+            return [super(MultipleFileField, self).clean(item, initial) for item in data]
+        return [super().clean(data, initial)]
 
 
 class IssueCreateForm(forms.ModelForm):
+    images = MultipleFileField(required=False, label="Photos")
     latitude = forms.DecimalField(
         required=False, max_digits=9, decimal_places=6,
         min_value=-90, max_value=90,
@@ -48,13 +67,29 @@ class IssueCreateForm(forms.ModelForm):
     def clean_image(self):
         return validate_city_image(self.cleaned_data.get("image"))
 
+    def clean_images(self):
+        images = self.cleaned_data.get("images", [])
+        if len(images) > MAX_ISSUE_IMAGES:
+            raise forms.ValidationError("You can upload up to 5 photos.")
+        return [validate_city_image(image) for image in images]
+
     def clean(self):
         cleaned_data = super().clean()
         title = cleaned_data.get("title", "").strip()
         description = cleaned_data.get("description", "").strip()
         image = cleaned_data.get("image")
+        images = cleaned_data.get("images", [])
 
-        if not image:
+        if image and images:
+            if len(images) >= MAX_ISSUE_IMAGES:
+                self.add_error("images", "You can upload up to 5 photos, including the attached photo.")
+            else:
+                images.insert(0, image)
+                cleaned_data["images"] = images
+                cleaned_data["image"] = None
+        has_photo = bool(image or images)
+
+        if not has_photo:
             if not title:
                 self.add_error("title", "Add a title, or attach a photo for AI-assisted drafting.")
             if not description:

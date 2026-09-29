@@ -14,11 +14,12 @@
     border: 1px solid var(--cs-border);
     z-index: 1;
   }
-  .image-preview-box {
-    max-height: 200px;
-    object-fit: cover;
-    border-radius: var(--cs-radius-md);
-  }
+  .cs-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  @media (min-width: 576px) { .cs-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .cs-photo-tile { position: relative; overflow: hidden; border: 1px solid var(--cs-border); border-radius: var(--cs-radius-md); background: #f8fafc; aspect-ratio: 4 / 3; }
+  .cs-photo-tile img { width: 100%; height: 100%; object-fit: cover; }
+  .cs-photo-remove { position: absolute; top: .4rem; right: .4rem; width: 2.5rem; height: 2.5rem; border: 0; border-radius: 50%; background: rgba(255,255,255,.96); color: #17365d; box-shadow: 0 2px 10px rgba(15,35,55,.16); }
+  .cs-photo-caption { position: absolute; bottom: 0; left: 0; right: 0; overflow: hidden; padding: .35rem .5rem; color: #fff; background: linear-gradient(transparent, rgba(12,31,51,.68)); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
   #camera-preview {
     display: block;
     width: 100%;
@@ -39,7 +40,7 @@
         <div class="d-flex align-items-center justify-content-between mb-4">
           <div>
             <h1 class="h2 cs-page-heading mb-1">Report a civic problem</h1>
-            <p class="cs-page-lede mb-0">Describe the issue, optionally attach a photo, and pick its location.</p>
+            <p class="cs-page-lede mb-0">Describe the issue, optionally attach photos, and pick its location.</p>
           </div>
           <a href="{% url 'dashboard:index' %}" class="btn btn-cs-outline btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
@@ -52,10 +53,19 @@
           {% endfor %}
         {% endif %}
 
+        <div class="cs-report-steps d-flex flex-wrap gap-2 mb-3" aria-label="Report steps">
+          <span class="cs-report-step is-current"><span>01</span> What happened</span>
+          <span class="cs-report-step"><span>02</span> Evidence</span>
+          <span class="cs-report-step"><span>03</span> Location</span>
+          <span class="cs-report-step"><span>04</span> Submit</span>
+        </div>
+
         <div class="card">
           <div class="card-body p-4 p-md-5">
             <form method="post" action="{% url 'issues:create' %}" enctype="multipart/form-data" id="issue-report-form" data-analyze-url="{% url 'issues:analyze_photo' %}">
               {% csrf_token %}
+
+              <div class="cs-form-section-heading"><span>01</span><div><h2 class="h5 fw-bold text-dark mb-1">Tell us what happened</h2><p class="small text-muted-cs mb-0">A clear description helps CitySense assess your report.</p></div></div>
 
               <!-- 1. Title -->
               <div class="mb-4">
@@ -88,14 +98,15 @@
               </div>
 
               <!-- 3. Photo Upload -->
+              <div class="cs-form-section-heading"><span>02</span><div><h2 class="h5 fw-bold text-dark mb-1">Add evidence</h2><p class="small text-muted-cs mb-0">Photos are optional and can help explain the issue from different angles.</p></div></div>
               <div class="mb-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                  <label for="id_image" class="form-label fw-bold text-dark fs-6 mb-0">
-                    Add a photo <span class="badge bg-light text-muted border ms-1">Optional</span>
+                  <label for="id_images" class="form-label fw-bold text-dark fs-6 mb-0">
+                    Add photos <span class="badge bg-light text-muted border ms-1">Optional</span>
                   </label>
-                  <span class="small text-muted-cs">Take a picture or choose an existing photo.</span>
+                  <span id="photo-count" class="small text-muted-cs">0 of 5 photos</span>
                 </div>
-                <input type="file" name="image" id="id_image" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp">
+                <input type="file" name="images" id="id_images" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
                 <div class="d-flex flex-wrap gap-2 cs-photo-actions">
                   <button type="button" id="take-photo" class="btn btn-cs-primary">
                     <i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Take Photo
@@ -105,22 +116,15 @@
                   </button>
                 </div>
                 <div id="image-client-error" class="invalid-feedback d-none"></div>
-                {% if form.image.errors %}
+                {% if form.images.errors %}
                   <div class="invalid-feedback d-block text-danger small mt-1">
-                    {{ form.image.errors.0 }}
+                    {{ form.images.errors.0 }}
                   </div>
                 {% else %}
-                  <div class="form-text text-muted-cs small">Supported formats: JPEG, PNG, GIF, WebP. Maximum size: 5 MB.</div>
+                  <div class="form-text text-muted-cs small">Add up to 5 photos. JPG, PNG, GIF or WebP. Max 5 MB each.</div>
                 {% endif %}
 
-                <div id="image-preview-wrapper" class="cs-photo-preview mt-3 d-none">
-                  <span class="small fw-semibold text-muted d-block mb-2">Photo selected</span>
-                  <img id="image-preview" src="#" alt="Upload preview" class="img-fluid image-preview-box border">
-                  <div class="d-flex flex-wrap gap-2 mt-2">
-                    <button type="button" id="retake-photo" class="btn btn-cs-outline btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i> Retake</button>
-                    <button type="button" id="choose-another-photo" class="btn btn-cs-outline btn-sm"><i class="bi bi-images me-1"></i> Choose another</button>
-                  </div>
-                </div>
+                <div id="photo-preview-grid" class="cs-photo-grid mt-3" aria-live="polite"></div>
                 <div class="mt-3">
                   <button type="button" id="analyze-photo" class="btn btn-cs-outline" disabled>
                     <i class="bi bi-stars me-1" aria-hidden="true"></i> Analyze photo with AI
@@ -150,6 +154,7 @@
               </div>
 
               <!-- 4. Location Picker (Leaflet Map) -->
+              <div class="cs-form-section-heading"><span>03</span><div><h2 class="h5 fw-bold text-dark mb-1">Pin the location</h2><p class="small text-muted-cs mb-0">Help response teams understand where the issue is happening.</p></div></div>
               <div class="mb-4">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <label class="form-label fw-bold text-dark fs-6 mb-0">
@@ -160,7 +165,7 @@
                   </button>
                 </div>
 
-                <div id="picker-map" class="mb-3"></div>
+                <div class="cs-map-frame mb-3"><div id="picker-map"></div></div>
 
                 <div class="row g-3">
                   <div class="col-6">
@@ -178,6 +183,7 @@
               </div>
 
               <!-- Submit Button -->
+              <div class="cs-form-section-heading"><span>04</span><div><h2 class="h5 fw-bold text-dark mb-1">Submit to CitySense</h2><p class="small text-muted-cs mb-0">Your report will be assessed using the information you provide.</p></div></div>
               <div class="d-grid pt-2">
                 <button type="submit" id="submit-report" class="btn btn-cs-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2">
                   <i class="bi bi-send-fill"></i> Submit report
@@ -220,9 +226,8 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   // Image preview handler
-  const imageInput = document.getElementById("id_image");
-  const previewWrapper = document.getElementById("image-preview-wrapper");
-  const previewImg = document.getElementById("image-preview");
+  const imageInput = document.getElementById("id_images");
+  const previewGrid = document.getElementById("photo-preview-grid");
   const imageError = document.getElementById("image-client-error");
   const reportForm = document.getElementById("issue-report-form");
   const analyzeButton = document.getElementById("analyze-photo");
@@ -235,21 +240,95 @@ document.addEventListener("DOMContentLoaded", function() {
   const photoActionButtons = [
     document.getElementById("take-photo"),
     document.getElementById("choose-photo"),
-    document.getElementById("retake-photo"),
-    document.getElementById("choose-another-photo")
   ];
   const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   const maxImageSize = 5 * 1024 * 1024;
+  const maxImages = 5;
 
-  let selectedImageFile = imageInput ? imageInput.files[0] || null : null;
+  let selectedImageFiles = [];
   const cameraModalElement = document.getElementById("camera-modal");
   const cameraModal = bootstrap.Modal.getOrCreateInstance(cameraModalElement);
   const cameraVideo = document.getElementById("camera-preview");
   const cameraError = document.getElementById("camera-error");
   const captureButton = document.getElementById("capture-photo");
   let cameraStream = null;
-  let processingCapturedFile = false;
   let analysisInProgress = false;
+
+  function syncNativeFiles() {
+    try {
+      const transfer = new DataTransfer();
+      selectedImageFiles.forEach(function(file) { transfer.items.add(file); });
+      imageInput.files = transfer.files;
+    } catch (error) { /* The formdata handler submits the File array as a fallback. */ }
+    document.getElementById("photo-count").textContent = selectedImageFiles.length + " of 5 photos";
+    analyzeButton.disabled = !selectedImageFiles.length || analysisInProgress;
+  }
+
+  function renderPhotoPreviews() {
+    previewGrid.replaceChildren();
+    selectedImageFiles.forEach(function(file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const tile = document.createElement("div");
+        tile.className = "cs-photo-tile";
+        const img = document.createElement("img");
+        img.src = event.target.result;
+        img.alt = "Preview of " + file.name;
+        const caption = document.createElement("div");
+        caption.className = "cs-photo-caption";
+        caption.textContent = file.name;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "cs-photo-remove";
+        remove.setAttribute("aria-label", "Remove " + file.name);
+        remove.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+        remove.addEventListener("click", function() {
+          const selectedIndex = selectedImageFiles.indexOf(file);
+          if (selectedIndex < 0) return;
+          selectedImageFiles.splice(selectedIndex, 1);
+          syncNativeFiles();
+          renderPhotoPreviews();
+          triagePreview.classList.add("d-none");
+          draftStatus.classList.add("d-none");
+        });
+        tile.append(img, caption, remove);
+        previewGrid.append(tile);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function addSelectedFiles(fileList) {
+    const incoming = Array.from(fileList);
+    imageError.classList.add("d-none");
+    imageInput.classList.remove("is-invalid");
+    const invalid = incoming.find(function(file) {
+      return !allowedTypes.includes(file.type) || file.size > maxImageSize;
+    });
+    if (invalid) {
+      imageError.textContent = invalid.size > maxImageSize
+        ? invalid.name + " is larger than 5 MB."
+        : invalid.name + " is not a supported image. Choose JPEG, PNG, GIF, or WebP.";
+      imageError.classList.remove("d-none");
+      imageInput.classList.add("is-invalid");
+      imageInput.value = "";
+      return;
+    }
+    if (selectedImageFiles.length + incoming.length > maxImages) {
+      imageError.textContent = "You can upload up to 5 photos. Remove a photo before adding more.";
+      imageError.classList.remove("d-none");
+      imageInput.classList.add("is-invalid");
+      imageInput.value = "";
+      return;
+    }
+    selectedImageFiles = selectedImageFiles.concat(incoming);
+    imageInput.value = "";
+    syncNativeFiles();
+    renderPhotoPreviews();
+    triagePreview.classList.add("d-none");
+    draftStatus.classList.add("d-none");
+    if (selectedImageFiles.length) analyzeSelectedPhoto();
+  }
 
   function stopCamera() {
     if (cameraStream) {
@@ -306,7 +385,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function openImagePicker() {
     if (!imageInput) return;
-    imageInput.removeAttribute("capture");
     imageInput.click();
   }
 
@@ -316,13 +394,6 @@ document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("choose-photo").addEventListener("click", function() {
     openImagePicker();
   });
-  document.getElementById("retake-photo").addEventListener("click", function() {
-    openCamera();
-  });
-  document.getElementById("choose-another-photo").addEventListener("click", function() {
-    openImagePicker();
-  });
-
   cameraModalElement.addEventListener("hidden.bs.modal", stopCamera);
   window.addEventListener("pagehide", stopCamera);
 
@@ -340,69 +411,26 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
       const capturedFile = new File([blob], "captured-photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
-      selectedImageFile = capturedFile;
-      try {
-        const transfer = new DataTransfer();
-        transfer.items.add(capturedFile);
-        imageInput.files = transfer.files;
-      } catch (error) {
-        // The formdata event below includes this File on browsers that prevent
-        // assigning to the native file input.
-      }
-      processingCapturedFile = true;
-      imageInput.dispatchEvent(new Event("change", { bubbles: true }));
-      processingCapturedFile = false;
+      addSelectedFiles([capturedFile]);
       stopCamera();
       cameraModal.hide();
     }, "image/jpeg", 0.88);
   });
 
-  // Preserve a camera-captured File in both fetch(FormData) and normal browser
-  // form submission, including browsers that reject assignment to input.files.
+  // Keep both camera-captured and picker-selected files in fetch and form submit.
   reportForm.addEventListener("formdata", function(event) {
-    if (selectedImageFile) {
-      event.formData.set("image", selectedImageFile, selectedImageFile.name);
-    }
+    event.formData.delete("images");
+    selectedImageFiles.forEach(function(file) { event.formData.append("images", file, file.name); });
   });
 
   if (imageInput) {
     imageInput.addEventListener("change", function() {
-      const file = this.files[0] || (processingCapturedFile ? selectedImageFile : null);
-      selectedImageFile = file || null;
-      imageError.classList.add("d-none");
-      imageInput.classList.remove("is-invalid");
-      previewWrapper.classList.add("d-none");
-      analyzeButton.disabled = !file;
-      triagePreview.classList.add("d-none");
-      draftStatus.classList.add("d-none");
-      if (file) {
-        if (!allowedTypes.includes(file.type) || file.size > maxImageSize) {
-          imageError.textContent = file.size > maxImageSize
-            ? "Choose an image no larger than 5 MB."
-            : "Choose a JPEG, PNG, GIF, or WebP image.";
-          imageError.classList.remove("d-none");
-          imageInput.classList.add("is-invalid");
-          selectedImageFile = null;
-          analyzeButton.disabled = true;
-          this.value = "";
-          return;
-        }
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          if (selectedImageFile !== file) return;
-          previewImg.src = e.target.result;
-          previewWrapper.classList.remove("d-none");
-          analyzeSelectedPhoto();
-        }
-        reader.readAsDataURL(file);
-      } else {
-        previewWrapper.classList.add("d-none");
-      }
+      addSelectedFiles(this.files);
     });
   }
 
   async function analyzeSelectedPhoto() {
-    if (!selectedImageFile || analysisInProgress) return;
+    if (!selectedImageFiles.length || analysisInProgress) return;
     analysisInProgress = true;
     const originalContent = analyzeButton.innerHTML;
     analyzeButton.disabled = true;
@@ -422,7 +450,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Photo analysis is unavailable. You can enter the report manually.");
-      if (!selectedImageFile) return;
+      if (!selectedImageFiles.length) return;
 
       const titleInput = document.getElementById("id_title");
       const descriptionInput = document.getElementById("id_description");
@@ -451,6 +479,7 @@ document.addEventListener("DOMContentLoaded", function() {
       analyzeButton.innerHTML = originalContent;
       submitButton.disabled = false;
       photoActionButtons.forEach(function(button) { button.disabled = false; });
+      syncNativeFiles();
     }
   }
 
@@ -532,7 +561,7 @@ document.addEventListener("DOMContentLoaded", function() {
       event.preventDefault();
       return;
     }
-    if (imageInput.files[0] && (!allowedTypes.includes(imageInput.files[0].type) || imageInput.files[0].size > maxImageSize)) {
+    if (selectedImageFiles.some(function(file) { return !allowedTypes.includes(file.type) || file.size > maxImageSize; })) {
       event.preventDefault();
       imageInput.dispatchEvent(new Event("change"));
       return;
