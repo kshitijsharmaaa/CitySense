@@ -25,6 +25,10 @@
 </head>
 <body>
 
+  {% if request.user.is_authenticated or request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'register' %}
+    {% include "components/living_city.html" %}
+  {% endif %}
+
   <!-- Navigation Bar -->
   {% include "components/navbar.html" %}
 

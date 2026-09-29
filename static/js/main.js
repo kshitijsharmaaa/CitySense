@@ -25,7 +25,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initializeScrollStories();
   initializeProcessReveal();
+  initializeLivingCityParallax();
 });
+
+/** Add a small pointer response to auth ambience without moving the form card. */
+function initializeLivingCityParallax() {
+  var scene = document.querySelector('.cs-living-city--auth');
+  if (!scene) return;
+
+  var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (!finePointer.matches || reducedMotion.matches) return;
+
+  var framePending = false;
+  var pointerX = 0;
+  var pointerY = 0;
+  function updateParallax() {
+    framePending = false;
+    scene.style.setProperty('--cs-city-parallax-x', pointerX + 'px');
+    scene.style.setProperty('--cs-city-parallax-y', pointerY + 'px');
+    scene.style.setProperty('--cs-city-parallax-soft-x', (pointerX * -.45) + 'px');
+    scene.style.setProperty('--cs-city-parallax-soft-y', (pointerY * -.45) + 'px');
+    scene.style.setProperty('--cs-city-parallax-aura-x', (pointerX * .25) + 'px');
+    scene.style.setProperty('--cs-city-parallax-aura-y', (pointerY * .25) + 'px');
+  }
+  function queueParallax(x, y) {
+    pointerX = x;
+    pointerY = y;
+    if (framePending) return;
+    framePending = true;
+    window.requestAnimationFrame(updateParallax);
+  }
+
+  window.addEventListener('pointermove', function (event) {
+    queueParallax((event.clientX / window.innerWidth - .5) * 22,
+      (event.clientY / window.innerHeight - .5) * 16);
+  }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', function () { queueParallax(0, 0); });
+}
 
 /** Reveal the editorial process sequence once it enters the viewport. */
 function initializeProcessReveal() {

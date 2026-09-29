@@ -48,7 +48,7 @@
               <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-dark text-white font-monospace fs-6 px-3 py-2">Report ID: {{ issue.issue_code }}</span>
                 {% if issue.ai_category %}
-                  <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-tag me-1"></i>{{ issue.ai_category }}</span>
+                  <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-stars me-1"></i>AI · {{ issue.get_ai_category_display }}</span>
                 {% endif %}
               </div>
               <span class="text-muted-cs small"><i class="bi bi-clock me-1"></i>Date reported: {{ issue.created_at|date:"M d, Y at H:i" }}</span>
@@ -91,14 +91,20 @@
         {% if issue.incident %}
           <div class="card mb-4">
             <div class="card-header bg-light fw-bold text-dark d-flex align-items-center justify-content-between">
-              <span><i class="bi bi-diagram-3-fill text-primary me-1"></i> Associated Incident</span>
+              <span><i class="bi bi-diagram-3-fill text-primary me-1"></i> Linked civic incident</span>
               {% include "components/status_badge.html" with status=issue.incident.status %}
             </div>
             <div class="card-body p-4">
-              <div class="mb-3">
-                <span class="small text-muted-cs d-block mb-1">Incident ID:</span>
+              <div class="rounded-3 border bg-light p-3 mb-3">
+                <div class="small text-muted-cs text-uppercase fw-semibold" style="letter-spacing:.06em">Your report</div>
+                <div class="fw-semibold text-dark mb-2">{{ issue.issue_code }}</div>
+                <div class="text-center text-primary" aria-hidden="true"><i class="bi bi-arrow-down"></i></div>
+                <div class="small text-muted-cs text-uppercase fw-semibold mt-2" style="letter-spacing:.06em">Linked civic incident</div>
                 <div class="fw-bold fs-5 text-dark font-monospace">{{ issue.incident.incident_code }}</div>
+                <p class="small text-muted-cs mb-0 mt-2">{% if issue.incident.report_count > 1 %}This report is grouped with other reports describing the same civic problem.{% else %}This is currently the only report associated with this incident.{% endif %}</p>
               </div>
+              <div class="small text-muted-cs mb-3"><i class="bi bi-people me-1 text-primary"></i>{{ issue.incident.report_count }} report{{ issue.incident.report_count|pluralize }} associated with this incident</div>
+              <div class="small text-muted-cs mb-3"><span class="d-block">Incident category</span><strong class="text-dark">{{ issue.incident.get_category_display }}</strong></div>
 
               <div class="mb-3">
                 <span class="small text-muted-cs d-block mb-1">Assigned department:</span>
@@ -163,7 +169,7 @@
         {% if issue.ai_summary or issue.ai_category or issue.ai_priority or issue.ai_department or issue.ai_confidence != None %}
           <div class="card">
             <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
-              <i class="bi bi-stars text-accent"></i> Smart Assessment
+              <i class="bi bi-stars text-accent"></i> CitySense AI Analysis
             </div>
             <div class="card-body p-4">
               {% if issue.ai_summary %}
@@ -172,7 +178,7 @@
                   <p class="small text-dark bg-light p-2.5 rounded border mb-0">{{ issue.ai_summary }}</p>
                 </div>
               {% endif %}
-              {% if issue.ai_category %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested type</span><strong>{{ issue.ai_category }}</strong></div>{% endif %}
+              {% if issue.ai_category %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested category</span><strong>{{ issue.get_ai_category_display }}</strong></div>{% endif %}
               {% if issue.ai_priority %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested priority</span>{% include "components/priority_badge.html" with priority=issue.ai_priority %}</div>{% endif %}
               {% if issue.ai_department %}<div class="mb-2"><span class="small text-muted-cs d-block">Suggested department</span><strong>{{ issue.ai_department.name }}</strong></div>{% endif %}
               {% if issue.ai_confidence != None %}
@@ -183,6 +189,7 @@
                   </span>
                 </div>
               {% endif %}
+              <p class="small text-muted-cs border-top pt-3 mt-3 mb-0">Classification based on the submitted report and available evidence. AI values are suggestions; incident decisions reflect the current review state.</p>
             </div>
           </div>
         {% endif %}

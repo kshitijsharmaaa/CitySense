@@ -22,12 +22,12 @@
     <!-- Header Banner -->
     <div class="cs-surface d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 p-4">
       <div>
-        <div class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-1.5 rounded-pill font-weight-bold mb-2">
-          <i class="bi bi-person-badge-fill me-1"></i>{% if request.user.is_admin_user %} CitySense Operations{% else %} Your CitySense Dashboard{% endif %}
+          <div class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-1.5 rounded-pill font-weight-bold mb-2">
+          <i class="bi bi-person-badge-fill me-1"></i>{% if request.user.is_admin_user %} CitySense Operations{% else %} YOUR CIVIC ACTIVITY{% endif %}
         </div>
         <h1 class="h2 cs-page-heading mb-1">{% if request.user.is_admin_user %}CitySense operations{% else %}Your reports{% endif %}</h1>
-        <p class="small fw-semibold text-primary mb-2">Welcome back, {{ request.user.name }}</p>
-        <p class="text-muted-cs mb-0">{% if request.user.is_admin_user %}A view of community reports and incident progress.{% else %}A view of your reports and their progress.{% endif %}</p>
+        <p class="small fw-semibold text-primary mb-2">{% if request.user.is_admin_user %}Welcome back, {{ request.user.name }}{% else %}Good to see you, {{ request.user.name }}{% endif %}</p>
+        <p class="text-muted-cs mb-0">{% if request.user.is_admin_user %}A view of community reports and incident progress.{% else %}Here’s what’s happening with your civic reports.{% endif %}</p>
       </div>
       <div class="d-flex gap-2">
         <a href="{% url 'issues:create' %}" class="btn btn-cs-primary d-inline-flex align-items-center gap-2">
@@ -40,7 +40,7 @@
     <div class="row g-3 mb-4">
       <div class="col-6 col-md-3">
         <div class="card cs-dashboard-metric p-3 h-100">
-          <div class="text-muted-cs small mb-1">{% if request.user.is_admin_user %}Total reports{% else %}Your reports{% endif %}</div>
+          <div class="text-muted-cs small mb-1">{% if request.user.is_admin_user %}Total reports{% else %}Total reports{% endif %}</div>
           <div class="fw-bold fs-3 text-dark">{{ issues|length }}</div>
         </div>
       </div>
@@ -76,31 +76,27 @@
             {% if issues %}
               <div class="list-group list-group-flush">
                 {% for issue in issues %}
-                  <a href="{% url 'issues:detail' issue.pk %}" class="list-group-item list-group-item-action p-3 report-row cs-dashboard-row" {% if issue.incident %}data-incident-id="{{ issue.incident.pk }}" data-incident-status="{{ issue.incident.status }}"{% endif %}>
-                    <div class="d-flex w-100 justify-content-between align-items-center mb-1">
-                      <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-dark text-white font-monospace">Report ID: {{ issue.issue_code }}</span>
+                  <a href="{% url 'issues:detail' issue.pk %}" class="list-group-item list-group-item-action p-3 p-lg-4 report-row cs-dashboard-row" {% if issue.incident %}data-incident-id="{{ issue.incident.pk }}" data-incident-status="{{ issue.incident.status }}"{% endif %}>
+                    <div class="d-flex flex-wrap w-100 justify-content-between align-items-start gap-2 mb-2">
+                      <div class="min-w-0">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="badge bg-light text-primary border font-monospace">{{ issue.issue_code }}</span>{% if issue.ai_category %}<span class="badge bg-white text-secondary border"><i class="bi bi-stars me-1"></i>AI · {{ issue.get_ai_category_display }}</span>{% elif issue.incident %}<span class="badge bg-white text-secondary border">{{ issue.incident.get_category_display }}</span>{% endif %}</div>
                         <h2 class="h6 mb-0 fw-bold text-dark">{{ issue.title }}</h2>
                       </div>
-                      {% if issue.incident %}
-                        {% include "components/status_badge.html" with status=issue.incident.status %}
-                      {% else %}
-                        {% include "components/status_badge.html" with status="REPORTED" %}
-                      {% endif %}
+                      {% if issue.incident %}{% include "components/status_badge.html" with status=issue.incident.status %}{% else %}{% include "components/status_badge.html" with status="REPORTED" %}{% endif %}
                     </div>
-                    <p class="mb-2 text-muted-cs small text-truncate" style="max-width: 500px;">{{ issue.description }}</p>
-                    <div class="d-flex align-items-center justify-content-between text-muted-cs small">
+                    <p class="mb-3 text-muted-cs small text-truncate" style="max-width: 540px;">{{ issue.description }}</p>
+                    <div class="d-flex flex-wrap align-items-center gap-x-3 gap-y-2 text-muted-cs small">
                       <span><i class="bi bi-clock me-1"></i>{{ issue.created_at|date:"M d, Y" }}</span>
-                      {% if issue.incident %}
-                        <span><i class="bi bi-diagram-3 me-1"></i>Incident ID: {{ issue.incident.incident_code }}</span>
-                      {% endif %}
+                      {% if issue.incident %}<span><i class="bi bi-diagram-3 me-1 text-primary"></i>Linked to {{ issue.incident.incident_code }}</span>{% endif %}
+                      {% if issue.latitude != None and issue.longitude != None %}<span><i class="bi bi-geo-alt me-1"></i>Location pinned</span>{% endif %}
                     </div>
+                    {% if issue.incident %}<div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top"><span class="small text-muted-cs">Incident priority</span>{% include "components/priority_badge.html" with priority=issue.incident.priority %}{% if issue.incident.department %}<span class="small text-muted-cs"><i class="bi bi-building me-1"></i>{{ issue.incident.department }}</span>{% endif %}</div>{% elif issue.ai_priority %}<div class="mt-3">{% include "components/priority_badge.html" with priority=issue.ai_priority %}<span class="small text-muted-cs ms-1">AI suggestion</span></div>{% endif %}
                   </a>
                 {% endfor %}
               </div>
             {% else %}
               <div class="p-4 text-center">
-                {% include "components/empty_state.html" with title="No Active Reports" message="You haven't submitted any civic issue reports yet." icon="bi-inbox" action_text="Report an Issue" action_url="/issues/new/" %}
+                {% include "components/empty_state.html" with title="Your civic story starts here" message="Report a local problem and follow its progress as CitySense brings related reports together." icon="bi-geo-alt" action_text="Report an Issue" action_url="/issues/new/" %}
               </div>
             {% endif %}
           </div>
@@ -111,7 +107,8 @@
       <div class="col-lg-5">
         <div class="card">
           <div class="card-header bg-light fw-bold text-dark p-3">
-            <i class="bi bi-map-fill text-danger me-2"></i> Report locations
+            <i class="bi bi-map-fill text-primary me-2"></i> Report locations
+            <span class="d-block small fw-normal text-muted-cs mt-1">Pinned locations from your submitted reports.</span>
           </div>
           <div class="card-body p-3">
             <div id="dashboard-map"></div>

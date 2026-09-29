@@ -44,10 +44,19 @@
           {% endfor %}
         {% endif %}
 
+        <div class="cs-report-steps d-flex flex-wrap gap-2 mb-3" aria-label="Report steps">
+          <span class="cs-report-step is-current"><span>01</span> What happened</span>
+          <span class="cs-report-step"><span>02</span> Evidence</span>
+          <span class="cs-report-step"><span>03</span> Location</span>
+          <span class="cs-report-step"><span>04</span> Submit</span>
+        </div>
+
         <div class="card">
           <div class="card-body p-4 p-md-5">
             <form method="post" action="{% url 'issues:create' %}" enctype="multipart/form-data" id="issue-report-form">
               {% csrf_token %}
+
+              <div class="cs-form-section-heading"><span>01</span><div><h2 class="h5 fw-bold text-dark mb-1">Tell us what happened</h2><p class="small text-muted-cs mb-0">A clear description helps CitySense assess your report.</p></div></div>
 
               <!-- 1. Title -->
               <div class="mb-4">
@@ -80,6 +89,7 @@
               </div>
 
               <!-- 3. Photo Upload -->
+              <div class="cs-form-section-heading"><span>02</span><div><h2 class="h5 fw-bold text-dark mb-1">Add evidence</h2><p class="small text-muted-cs mb-0">A photo is optional and can help explain the issue.</p></div></div>
               <div class="mb-4">
                 <label for="id_image" class="form-label fw-bold text-dark fs-6">
                   Photo <span class="badge bg-light text-muted border ms-1">Optional</span>
@@ -96,12 +106,13 @@
 
                 <!-- Instant Image Preview Box -->
                 <div id="image-preview-wrapper" class="mt-3 d-none">
-                  <span class="small fw-semibold text-muted d-block mb-1">Image Preview:</span>
-                  <img id="image-preview" src="#" alt="Upload preview" class="img-fluid image-preview-box border">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><span class="small fw-semibold text-dark"><i class="bi bi-paperclip me-1"></i><span id="image-file-name">Image preview</span></span><button type="button" id="remove-image" class="btn btn-sm btn-cs-outline py-1" aria-label="Remove selected image"><i class="bi bi-x-lg me-1"></i>Remove</button></div>
+                  <img id="image-preview" src="#" alt="Preview of selected report photo" class="img-fluid image-preview-box border">
                 </div>
               </div>
 
               <!-- 4. Location Picker (Leaflet Map) -->
+              <div class="cs-form-section-heading"><span>03</span><div><h2 class="h5 fw-bold text-dark mb-1">Pin the location</h2><p class="small text-muted-cs mb-0">Help response teams understand where the issue is happening.</p></div></div>
               <div class="mb-4">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <label class="form-label fw-bold text-dark fs-6 mb-0">
@@ -112,7 +123,7 @@
                   </button>
                 </div>
 
-                <div id="picker-map" class="mb-3"></div>
+                <div class="cs-map-frame mb-3"><div id="picker-map"></div></div>
 
                 <div class="row g-3">
                   <div class="col-6">
@@ -130,6 +141,7 @@
               </div>
 
               <!-- Submit Button -->
+              <div class="cs-form-section-heading"><span>04</span><div><h2 class="h5 fw-bold text-dark mb-1">Submit to CitySense</h2><p class="small text-muted-cs mb-0">Your report will be assessed using the information you provide.</p></div></div>
               <div class="d-grid pt-2">
                 <button type="submit" id="submit-report" class="btn btn-cs-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2">
                   <i class="bi bi-send-fill"></i> Submit report
@@ -155,6 +167,8 @@ document.addEventListener("DOMContentLoaded", function() {
   const previewWrapper = document.getElementById("image-preview-wrapper");
   const previewImg = document.getElementById("image-preview");
   const imageError = document.getElementById("image-client-error");
+  const imageName = document.getElementById("image-file-name");
+  const removeImage = document.getElementById("remove-image");
   const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   const maxImageSize = 5 * 1024 * 1024;
 
@@ -164,6 +178,7 @@ document.addEventListener("DOMContentLoaded", function() {
       imageError.classList.add("d-none");
       imageInput.classList.remove("is-invalid");
       previewWrapper.classList.add("d-none");
+      previewImg.removeAttribute("src");
       if (file) {
         if (!allowedTypes.includes(file.type) || file.size > maxImageSize) {
           imageError.textContent = file.size > maxImageSize
@@ -177,12 +192,21 @@ document.addEventListener("DOMContentLoaded", function() {
         const reader = new FileReader();
         reader.onload = function(e) {
           previewImg.src = e.target.result;
+          imageName.textContent = file.name;
           previewWrapper.classList.remove("d-none");
         }
         reader.readAsDataURL(file);
       } else {
         previewWrapper.classList.add("d-none");
       }
+    });
+    removeImage.addEventListener("click", function() {
+      imageInput.value = "";
+      previewImg.removeAttribute("src");
+      previewWrapper.classList.add("d-none");
+      imageError.classList.add("d-none");
+      imageInput.classList.remove("is-invalid");
+      imageInput.focus();
     });
   }
 
