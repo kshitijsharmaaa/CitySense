@@ -228,6 +228,27 @@ class GeminiProviderAdapterTests(TestCase):
 
     @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
     @patch("google.genai.Client")
+    def test_provider_sends_all_photos_with_combined_evidence_instructions(self, client_factory):
+        raw_images = [self.make_image_bytes("PNG"), self.make_image_bytes("JPEG")]
+        uploads = [
+            SimpleUploadedFile(f"angle-{index}.png", raw, content_type="image/png")
+            for index, raw in enumerate(raw_images)
+        ]
+        client = client_factory.return_value.__enter__.return_value
+        client.models.generate_content.return_value.text = json.dumps(VALID_REPORT_RESULT)
+
+        generate_with_gemini(title="", description="", images=uploads, generate_report=True)
+
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertEqual(len(contents.parts), 3)
+        self.assertIn("different angles", contents.parts[0].text)
+        self.assertIn("generated_title", contents.parts[0].text)
+        for part, raw in zip(contents.parts[1:], raw_images):
+            self.assertEqual(part.inline_data.data, raw)
+        self.assertTrue(all(upload.tell() == 0 for upload in uploads))
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
     def test_provider_uses_mime_type_from_validated_image_format(self, client_factory):
         for image_format, mime_type in (
             ("JPEG", "image/jpeg"),

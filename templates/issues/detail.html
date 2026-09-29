@@ -58,11 +58,14 @@
             <p class="text-secondary fs-6 lead mb-4" style="white-space: pre-line;">{{ issue.description }}</p>
             {% include "components/progress_tracker.html" %}
 
-            <!-- Uploaded Image -->
-            {% if issue.image %}
+            <!-- Uploaded evidence -->
+            {% if issue.image or issue.images.all %}
               <div class="mb-4">
-                <h3 class="h6 fw-bold text-dark mb-2"><i class="bi bi-image me-1"></i> Attached Photo</h3>
-                <img src="{{ issue.image.url }}" alt="Report photo" class="img-fluid rounded-3 border shadow-sm cs-issue-photo" style="max-height: 450px; width: 100%; object-fit: cover;">
+                <h3 class="h6 fw-bold text-dark mb-2"><i class="bi bi-images me-1"></i> Report photos <span class="text-muted-cs fw-normal small">{% if issue.image and issue.images.count %}{{ issue.images.count|add:"1" }} photos{% elif issue.image %}1 photo{% else %}{{ issue.images.count }} photo{{ issue.images.count|pluralize }}{% endif %}</span></h3>
+                <div class="row g-3">
+                  {% if issue.image %}<div class="col-6 col-md-4"><a href="{{ issue.image.url }}" target="_blank" rel="noopener"><img src="{{ issue.image.url }}" alt="Report photo" class="img-fluid rounded-3 border shadow-sm w-100" style="height:180px;object-fit:cover;"></a></div>{% endif %}
+                  {% for photo in issue.images.all %}<div class="col-6 col-md-4"><a href="{{ photo.image.url }}" target="_blank" rel="noopener"><img src="{{ photo.image.url }}" alt="Report photo {{ forloop.counter }}" class="img-fluid rounded-3 border shadow-sm w-100" style="height:180px;object-fit:cover;"></a></div>{% endfor %}
+                </div>
               </div>
             {% endif %}
 

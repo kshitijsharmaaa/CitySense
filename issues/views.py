@@ -12,7 +12,7 @@ from incidents.services import update_incident_intelligence
 from ai_engine.services import triage_issue
 
 from .forms import IssueAdminFilterForm, IssueCreateForm
-from .models import Issue, Priority
+from .models import Issue, IssueImage, Priority
 from incidents.presentation import complaint_age, complaint_progress
 from .services import create_issue_with_incident
 
@@ -154,6 +154,7 @@ def create(request):
             title=title,
             description=description,
             image=form.cleaned_data.get("image"),
+            images=form.cleaned_data.get("images") or None,
             generate_report=needs_generated_text,
         )
         triage_result = dict(triage_result)
@@ -185,11 +186,14 @@ def create(request):
             key: triage_result[key]
             for key in ("category", "priority", "department", "summary", "confidence")
         }
-        issue = create_issue_with_incident(
-            issue=issue,
-            reported_by=request.user,
-            triage_result=validated_triage,
-        )
+        with transaction.atomic():
+            issue = create_issue_with_incident(
+                issue=issue,
+                reported_by=request.user,
+                triage_result=validated_triage,
+            )
+            for position, uploaded_image in enumerate(form.cleaned_data.get("images", [])):
+                IssueImage.objects.create(issue=issue, image=uploaded_image, position=position)
         return redirect("issues:detail", pk=issue.pk)
     return render(request, "issues/form.html", {"form": form})
 
@@ -202,13 +206,15 @@ def analyze_photo(request):
     if not form.is_valid():
         return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
     image = form.cleaned_data.get("image")
-    if not image:
+    images = form.cleaned_data.get("images") or []
+    if not image and not images:
         return JsonResponse({"error": "Choose a photo before asking CitySense to analyze it."}, status=400)
 
     result = triage_issue(
         title=form.cleaned_data.get("title", ""),
         description=form.cleaned_data.get("description", ""),
         image=image,
+        images=images or None,
         generate_report=True,
     )
     if not result.get("generated_title") or not result.get("generated_description"):
@@ -260,7 +266,7 @@ def analyze_photo(request):
 def detail(request, pk):
     issues = Issue.objects.select_related(
         "incident__department", "incident__assigned_to"
-    ).prefetch_related("incident__status_history")
+    ).prefetch_related("incident__status_history", "images")
     if request.user.is_citizen:
         issues = issues.filter(reported_by=request.user)
     issue = get_object_or_404(issues, pk=pk)

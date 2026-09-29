@@ -17,7 +17,15 @@ def update_incident_review(*, incident_id, cleaned_data, changed_by):
     incident.assigned_to = cleaned_data['assigned_to']
     incident.status = new_status
     incident.resolution_notes = cleaned_data['resolution_notes']
-    incident.resolution_image = cleaned_data['resolution_image']
+    resolution_image = cleaned_data.get('resolution_image')
+    if resolution_image is False:
+        # ClearableFileInput uses False only when its explicit clear checkbox
+        # is selected. Map that UI action to the nullable model value.
+        incident.resolution_image = None
+    elif resolution_image is not None:
+        # An omitted optional upload may clean to None. Keep the current file
+        # in that case instead of assigning a falsey value to the ImageField.
+        incident.resolution_image = resolution_image
 
     if new_status == IncidentStatus.RESOLVED:
         if old_status != IncidentStatus.RESOLVED or incident.resolved_at is None:

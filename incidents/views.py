@@ -72,7 +72,7 @@ def admin_detail(request, pk):
         Incident.objects.select_related('department', 'assigned_to').prefetch_related(
             Prefetch(
                 'issues',
-                queryset=Issue.objects.select_related('reported_by', 'ai_department').order_by('-created_at'),
+                queryset=Issue.objects.select_related('reported_by', 'ai_department').prefetch_related('images').order_by('-created_at'),
             ),
             Prefetch(
                 'status_history',

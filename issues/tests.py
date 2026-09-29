@@ -29,7 +29,7 @@ from incidents.intelligence import (
 )
 from incidents.models import Incident, IncidentStatus, IncidentStatusHistory
 from .forms import MAX_IMAGE_SIZE
-from .models import Category, Department, Issue, Priority
+from .models import Category, Department, Issue, IssueImage, Priority
 from .services import create_issue_with_incident
 
 User = get_user_model()
@@ -393,6 +393,45 @@ class CitizenIssueWorkflowTests(TestCase):
                 })
                 self.assertEqual(response.status_code, 302)
                 self.assertTrue(Issue.objects.order_by("-pk").first().image)
+
+    def test_multiple_photos_save_and_display_on_issue_detail(self):
+        self.client.force_login(self.citizen)
+        photos = [self.image_upload(f"photo-{index}.png") for index in range(3)]
+        response = self.client.post(reverse("issues:create"), {**self.submit_data(), "images": photos})
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.images.count(), 3)
+        self.assertEqual(list(issue.images.values_list("position", flat=True)), [0, 1, 2])
+        detail = self.client.get(reverse("issues:detail", args=(issue.pk,)))
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "3 photos")
+        self.assertEqual(detail.content.count(b'alt="Report photo'), 3)
+
+    def test_five_photos_are_accepted_and_six_are_rejected(self):
+        self.client.force_login(self.citizen)
+        five = [self.image_upload(f"photo-{index}.png") for index in range(5)]
+        response = self.client.post(reverse("issues:create"), {**self.submit_data(), "images": five})
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.images.count(), 5)
+
+        six = [self.image_upload(f"too-many-{index}.png") for index in range(6)]
+        response = self.client.post(reverse("issues:create"), {**self.submit_data(), "images": six})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Issue.objects.count(), 1)
+        self.assertContains(response, "up to 5 photos")
+
+    def test_multiple_upload_rejects_corrupt_and_oversized_files(self):
+        self.client.force_login(self.citizen)
+        corrupt = SimpleUploadedFile("not-image.png", b"not an image", content_type="image/png")
+        response = self.client.post(reverse("issues:create"), {**self.submit_data(), "images": [corrupt]})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Issue.objects.exists())
+
+        oversized = SimpleUploadedFile("large.png", b"x" * (MAX_IMAGE_SIZE + 1), content_type="image/png")
+        response = self.client.post(reverse("issues:create"), {**self.submit_data(), "images": [oversized]})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Issue.objects.exists())
 
     @patch("issues.views.triage_issue", return_value=GENERATED_REPORT_TRIAGE)
     def test_image_only_submission_uses_validated_generated_report_text(self, triage):
