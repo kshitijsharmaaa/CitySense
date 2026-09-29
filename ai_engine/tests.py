@@ -14,7 +14,7 @@ from issues.models import Issue
 from .fallback import classify_fallback
 from .providers import generate_with_gemini
 from .services import triage_issue
-from .validators import TriageValidationError, validate_triage_result
+from .validators import TriageValidationError, validate_report_draft, validate_triage_result
 
 
 VALID_RESULT = {
@@ -23,6 +23,11 @@ VALID_RESULT = {
     "department": "Road Maintenance",
     "summary": "A pothole is reported near the library.",
     "confidence": 0.91,
+}
+VALID_REPORT_RESULT = {
+    **VALID_RESULT,
+    "generated_title": "Large pothole near the library",
+    "generated_description": "A pothole is visible in the roadway near the library.",
 }
 
 
@@ -63,6 +68,17 @@ class TriageValidationTests(TestCase):
         with self.assertRaises(TriageValidationError):
             validate_triage_result('{"category":')
 
+    def test_valid_report_draft_has_validated_editable_text(self):
+        validated = validate_report_draft(json.dumps(VALID_REPORT_RESULT))
+        self.assertEqual(validated["generated_title"], VALID_REPORT_RESULT["generated_title"])
+        self.assertEqual(validated["generated_description"], VALID_REPORT_RESULT["generated_description"])
+
+    def test_invalid_generated_report_fields_are_rejected(self):
+        for field, value in (("generated_title", " "), ("generated_description", "x" * 2001)):
+            with self.subTest(field=field):
+                with self.assertRaises(TriageValidationError):
+                    validate_report_draft({**VALID_REPORT_RESULT, field: value})
+
 
 class TriageServiceTests(TestCase):
     @override_settings(AI_API_KEY="test-key")
@@ -102,6 +118,50 @@ class TriageServiceTests(TestCase):
         self.assertEqual(result["category"], "Other")
         self.assertEqual(result["department"], "General")
 
+    @override_settings(AI_API_KEY="test-key")
+    @patch("ai_engine.services.generate_with_gemini", return_value=json.dumps(VALID_REPORT_RESULT))
+    def test_report_generation_returns_validated_draft(self, provider):
+        result = triage_issue(title="", description="", image=object(), generate_report=True)
+        self.assertEqual(result["generated_title"], VALID_REPORT_RESULT["generated_title"])
+        provider.assert_called_once()
+        self.assertTrue(provider.call_args.kwargs["generate_report"])
+
+    @override_settings(AI_API_KEY="test-key")
+    @patch("ai_engine.services.generate_with_gemini", side_effect=TimeoutError)
+    def test_report_generation_timeout_uses_fallback_without_fabricated_draft(self, provider):
+        result = triage_issue(title="", description="", image=object(), generate_report=True)
+        self.assertEqual(result["category"], "Other")
+        self.assertNotIn("generated_title", result)
+
+    @override_settings(AI_API_KEY="test-key")
+    @patch("ai_engine.services.generate_with_gemini")
+    def test_report_generation_marks_exhausted_provider_quota(self, provider):
+        class QuotaExceeded(Exception):
+            code = 429
+
+        provider.side_effect = QuotaExceeded("free_tier_requests quota exceeded")
+        result = triage_issue(title="", description="", image=object(), generate_report=True)
+        self.assertEqual(result["_draft_error"], "free_tier_quota_exhausted")
+        self.assertNotIn("generated_title", result)
+
+    @override_settings(AI_API_KEY="")
+    @patch("ai_engine.services.generate_with_gemini")
+    def test_missing_key_does_not_fabricate_image_only_report_text(self, provider):
+        result = triage_issue(title="", description="", image=object(), generate_report=True)
+        provider.assert_not_called()
+        self.assertEqual(result["_draft_error"], "missing_api_key")
+        self.assertNotIn("generated_title", result)
+        self.assertNotIn("generated_description", result)
+
+    @override_settings(AI_API_KEY="test-key")
+    @patch("ai_engine.services.generate_with_gemini", return_value=json.dumps({
+        **VALID_REPORT_RESULT, "generated_title": "x" * 256,
+    }))
+    def test_invalid_generated_text_uses_fallback_without_draft(self, provider):
+        result = triage_issue(title="", description="", image=object(), generate_report=True)
+        self.assertNotIn("generated_title", result)
+        self.assertEqual(result["category"], "Other")
+
 
 class GeminiProviderAdapterTests(TestCase):
     @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
@@ -119,9 +179,29 @@ class GeminiProviderAdapterTests(TestCase):
         self.assertEqual(len(contents.parts), 1)
         self.assertIn("Pothole", contents.parts[0].text)
         self.assertIn("Near the library", contents.parts[0].text)
+        config = client.models.generate_content.call_args.kwargs["config"]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertEqual(config.thinking_config.thinking_level.value, "MEDIUM")
         options = client_factory.call_args.kwargs["http_options"]
         self.assertEqual(options.timeout, 3000)
         self.assertEqual(options.retry_options.attempts, 1)
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("ai_engine.providers.time.sleep")
+    @patch("google.genai.Client")
+    def test_provider_retries_one_transient_503(self, client_factory, sleep):
+        from google.genai.errors import ServerError
+
+        client_factory.return_value.__enter__.return_value.models.generate_content.side_effect = [
+            ServerError(503, {"error": {"message": "temporarily unavailable"}}),
+            type("GeminiResponse", (), {"text": json.dumps(VALID_RESULT)})(),
+        ]
+
+        response = generate_with_gemini(title="Pothole", description="Near the library")
+
+        self.assertEqual(response, json.dumps(VALID_RESULT))
+        self.assertEqual(client_factory.call_count, 2)
+        sleep.assert_called_once_with(0.25)
 
     @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
     @patch("google.genai.Client")
@@ -166,6 +246,37 @@ class GeminiProviderAdapterTests(TestCase):
                 self.assertEqual(contents.parts[1].inline_data.mime_type, mime_type)
                 self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
                 self.assertEqual(upload.tell(), 0)
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
+    def test_report_generation_prompt_requests_draft_and_normalizes_jpeg_orientation(self, client_factory):
+        original = PillowImage.new("RGB", (4, 2), color="red")
+        exif = original.getexif()
+        exif[274] = 6
+        buffer = BytesIO()
+        original.save(buffer, format="JPEG", exif=exif)
+        original_bytes = buffer.getvalue()
+        upload = SimpleUploadedFile("rotated.jpg", original_bytes, content_type="image/jpeg")
+        client = client_factory.return_value.__enter__.return_value
+        client.models.generate_content.return_value.text = json.dumps(VALID_REPORT_RESULT)
+
+        generate_with_gemini(
+            title="", description="", image=upload, generate_report=True,
+        )
+
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertIn("generated_title", contents.parts[0].text)
+        self.assertIn("Identify the visible civic problem", contents.parts[0].text)
+        self.assertEqual(contents.parts[1].inline_data.mime_type, "image/jpeg")
+        config = client.models.generate_content.call_args.kwargs["config"]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertEqual(config.thinking_config.thinking_level.value, "LOW")
+        normalized_bytes = contents.parts[1].inline_data.data
+        with PillowImage.open(BytesIO(normalized_bytes)) as normalized:
+            self.assertEqual(normalized.size, (2, 4))
+            self.assertEqual(normalized.getexif().get(274, 1), 1)
+        self.assertEqual(upload.tell(), 0)
+        self.assertEqual(upload.read(), original_bytes)
 
     @staticmethod
     def make_image_bytes(image_format):
@@ -226,6 +337,82 @@ class IssueTriageIntegrationTests(TestCase):
         issue = Issue.objects.get()
         with issue.image.open("rb") as saved_image:
             self.assertEqual(saved_image.read(), image_bytes)
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
+    def test_analyze_endpoint_sends_selected_image_and_text_to_gemini(self, client_factory):
+        buffer = BytesIO()
+        PillowImage.new("RGB", (3, 2), color="blue").save(buffer, format="PNG")
+        image_bytes = buffer.getvalue()
+        client = client_factory.return_value.__enter__.return_value
+        client.models.generate_content.return_value.text = json.dumps(VALID_REPORT_RESULT)
+
+        response = self.client.post(reverse("issues:analyze_photo"), {
+            "title": "There is a problem here",
+            "description": "Near the library entrance",
+            "image": SimpleUploadedFile("report.png", image_bytes, content_type="image/png"),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], VALID_REPORT_RESULT["generated_title"])
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertEqual(contents.role, "user")
+        self.assertIn("There is a problem here", contents.parts[0].text)
+        self.assertIn("Near the library entrance", contents.parts[0].text)
+        self.assertEqual(contents.parts[1].inline_data.mime_type, "image/png")
+        self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
+        self.assertFalse(Issue.objects.exists())
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
+    def test_image_only_analyze_endpoint_allows_blank_text_and_sends_image(self, client_factory):
+        image_bytes = GeminiProviderAdapterTests.make_image_bytes("JPEG")
+        client = client_factory.return_value.__enter__.return_value
+        client.models.generate_content.return_value.text = json.dumps(VALID_REPORT_RESULT)
+
+        response = self.client.post(reverse("issues:analyze_photo"), {
+            "title": "", "description": "",
+            "image": SimpleUploadedFile("pothole.jpg", image_bytes, content_type="image/jpeg"),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], VALID_REPORT_RESULT["generated_title"])
+        self.assertEqual(response.json()["description"], VALID_REPORT_RESULT["generated_description"])
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertIn("treat it as primary visual evidence", contents.parts[0].text)
+        self.assertIn("Citizen report title:\n\n", contents.parts[0].text)
+        self.assertIn("Citizen report description:\n\n", contents.parts[0].text)
+        self.assertEqual(contents.parts[1].inline_data.mime_type, "image/jpeg")
+        self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
+        self.assertFalse(Issue.objects.exists())
+
+    @override_settings(AI_API_KEY="test-key", AI_MODEL="test-model", AI_TIMEOUT_SECONDS=3)
+    @patch("google.genai.Client")
+    def test_image_only_gemini_draft_is_saved_and_seeds_incident(self, client_factory):
+        image_bytes = GeminiProviderAdapterTests.make_image_bytes("PNG")
+        client = client_factory.return_value.__enter__.return_value
+        client.models.generate_content.return_value.text = json.dumps(VALID_REPORT_RESULT)
+
+        response = self.client.post(reverse("issues:create"), {
+            "title": "", "description": "",
+            "image": SimpleUploadedFile("pothole.png", image_bytes, content_type="image/png"),
+        })
+
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.title, VALID_REPORT_RESULT["generated_title"])
+        self.assertEqual(issue.description, VALID_REPORT_RESULT["generated_description"])
+        self.assertEqual(issue.ai_category, VALID_RESULT["category"])
+        self.assertEqual(issue.ai_priority, VALID_RESULT["priority"])
+        self.assertEqual(issue.ai_department.name, VALID_RESULT["department"])
+        self.assertEqual(issue.incident.category, VALID_RESULT["category"])
+        self.assertEqual(issue.incident.priority, VALID_RESULT["priority"])
+        self.assertEqual(issue.incident.department.name, VALID_RESULT["department"])
+        with issue.image.open("rb") as saved_image:
+            self.assertEqual(saved_image.read(), image_bytes)
+        contents = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertEqual(contents.parts[1].inline_data.data, image_bytes)
+        self.assertEqual(contents.parts[1].inline_data.mime_type, "image/png")
 
     @override_settings(AI_API_KEY="test-key")
     @patch("ai_engine.services.generate_with_gemini", side_effect=TimeoutError)

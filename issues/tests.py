@@ -34,6 +34,16 @@ from .services import create_issue_with_incident
 
 User = get_user_model()
 
+GENERATED_REPORT_TRIAGE = {
+    "category": "Pothole",
+    "priority": "HIGH",
+    "department": "Road Maintenance",
+    "summary": "A pothole is visible in the roadway.",
+    "confidence": 0.9,
+    "generated_title": "Large pothole on the road",
+    "generated_description": "A large pothole is visible in the roadway and may affect passing vehicles.",
+}
+
 
 class DepartmentTests(TestCase):
 
@@ -315,6 +325,33 @@ class CitizenIssueWorkflowTests(TestCase):
                 response = self.client.get(reverse("issues:create"))
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("form", response.context)
+                self.assertContains(response, "Take Photo")
+                self.assertContains(response, "Choose from Files")
+                self.assertContains(response, "capture", html=False)
+                self.assertContains(response, "Analyze photo with AI")
+                self.assertContains(response, 'name="ai_category"')
+                self.assertContains(response, 'name="ai_priority"')
+                self.assertContains(response, 'name="ai_department"')
+
+    @patch("issues.views.triage_issue", return_value=GENERATED_REPORT_TRIAGE)
+    def test_citizen_classification_edits_seed_new_incident(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:create"), {
+            **self.submit_data(),
+            "ai_category": Category.ROAD_DAMAGE,
+            "ai_priority": Priority.LOW,
+            "ai_department": "Road Maintenance",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.ai_category, Category.ROAD_DAMAGE)
+        self.assertEqual(issue.ai_priority, Priority.LOW)
+        self.assertEqual(issue.ai_department.name, "Road Maintenance")
+        self.assertEqual(issue.incident.category, Category.ROAD_DAMAGE)
+        self.assertEqual(issue.incident.priority, Priority.LOW)
+        self.assertEqual(issue.incident.department.name, "Road Maintenance")
+        self.assertEqual(issue.incident.status, IncidentStatus.REPORTED)
 
     def test_admin_can_submit_report_and_review_it(self):
         admin = User.objects.create_user(
@@ -344,6 +381,110 @@ class CitizenIssueWorkflowTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Issue.objects.get().image)
+
+    def test_jpeg_png_gif_and_webp_uploads_remain_supported(self):
+        self.client.force_login(self.citizen)
+        for image_format, extension in (("JPEG", "jpg"), ("PNG", "png"), ("GIF", "gif"), ("WEBP", "webp")):
+            with self.subTest(image_format=image_format):
+                response = self.client.post(reverse("issues:create"), {
+                    **self.submit_data(title=f"{image_format} upload {Issue.objects.count()}",
+                                       description=f"Checking a valid {image_format} photo."),
+                    "image": self.image_upload(f"report.{extension}", image_format),
+                })
+                self.assertEqual(response.status_code, 302)
+                self.assertTrue(Issue.objects.order_by("-pk").first().image)
+
+    @patch("issues.views.triage_issue", return_value=GENERATED_REPORT_TRIAGE)
+    def test_image_only_submission_uses_validated_generated_report_text(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:create"), {
+            "title": "", "description": "", "latitude": "", "longitude": "",
+            "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.title, GENERATED_REPORT_TRIAGE["generated_title"])
+        self.assertEqual(issue.description, GENERATED_REPORT_TRIAGE["generated_description"])
+        self.assertTrue(issue.image)
+        self.assertEqual(issue.ai_category, Category.POTHOLE)
+        self.assertEqual(issue.incident.category, Category.POTHOLE)
+        self.assertEqual(issue.incident.priority, Priority.HIGH)
+        self.assertEqual(issue.incident.department.name, "Road Maintenance")
+        self.assertTrue(triage.call_args.kwargs["generate_report"])
+
+    @patch("issues.views.triage_issue", return_value=GENERATED_REPORT_TRIAGE)
+    def test_photo_draft_preserves_a_title_the_citizen_entered(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:create"), {
+            **self.submit_data(title="My pothole report", description=""),
+            "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.title, "My pothole report")
+        self.assertEqual(issue.description, GENERATED_REPORT_TRIAGE["generated_description"])
+
+    @patch("issues.views.triage_issue", return_value=GENERATED_REPORT_TRIAGE)
+    def test_photo_draft_preserves_a_description_the_citizen_entered(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:create"), {
+            **self.submit_data(title="", description="Water is flowing from a broken pipe."),
+            "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 302)
+        issue = Issue.objects.get()
+        self.assertEqual(issue.title, GENERATED_REPORT_TRIAGE["generated_title"])
+        self.assertEqual(issue.description, "Water is flowing from a broken pipe.")
+
+    def test_image_only_submission_without_gemini_requires_manual_report_text(self):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:create"), {
+            "title": "", "description": "", "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Issue.objects.exists())
+        self.assertContains(response, "Please enter a title and description manually")
+
+    @patch("issues.views.triage_issue", return_value=GENERATED_REPORT_TRIAGE)
+    def test_analyze_photo_endpoint_returns_validated_editable_draft(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:analyze_photo"), {
+            "title": "", "description": "", "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], GENERATED_REPORT_TRIAGE["generated_title"])
+        self.assertEqual(response.json()["category"], "Pothole")
+        self.assertFalse(Issue.objects.exists())
+
+    @patch("issues.views.triage_issue", return_value={
+        "category": "Other", "priority": "MEDIUM", "department": "General",
+        "summary": "No description provided.", "confidence": 0.2,
+        "_draft_error": "provider_unavailable",
+    })
+    def test_analyze_photo_fallback_explains_manual_entry_is_available(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:analyze_photo"), {
+            "title": "", "description": "", "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("enter both manually", response.json()["error"])
+        self.assertIn("photo is still attached", response.json()["error"])
+        self.assertIn("analyze photo with ai” to retry", response.json()["error"].lower())
+        self.assertNotIn("photo was not submitted", response.json()["error"])
+
+    @patch("issues.views.triage_issue", return_value={
+        "category": "Other", "priority": "MEDIUM", "department": "General",
+        "summary": "No description provided.", "confidence": 0.2,
+        "_draft_error": "free_tier_quota_exhausted",
+    })
+    def test_analyze_photo_explains_exhausted_gemini_quota(self, triage):
+        self.client.force_login(self.citizen)
+        response = self.client.post(reverse("issues:analyze_photo"), {
+            "title": "", "description": "", "image": self.image_upload(),
+        })
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("free-tier request quota is exhausted", response.json()["error"])
+        self.assertIn("after the quota resets or is increased", response.json()["error"])
 
     def test_invalid_latitude_is_rejected(self):
         self.client.force_login(self.citizen)

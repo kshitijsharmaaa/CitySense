@@ -1,12 +1,9 @@
-from PIL import Image as PillowImage
 from django import forms
-from django.core.exceptions import ValidationError
 
+from ai_engine.prompts import ALLOWED_DEPARTMENTS
+from citysense.image_uploads import MAX_IMAGE_SIZE, validate_city_image
 from incidents.models import Incident, IncidentStatus
 from .models import Category, Department, Issue, Priority
-
-MAX_IMAGE_SIZE = 5 * 1024 * 1024
-ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "GIF", "WEBP"}
 
 
 class IssueCreateForm(forms.ModelForm):
@@ -27,23 +24,42 @@ class IssueCreateForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 5}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["ai_category"] = forms.ChoiceField(
+            required=False,
+            choices=(("", "Use AI recommendation"), *Category.choices),
+            widget=forms.Select(attrs={"class": "form-select"}),
+        )
+        self.fields["ai_priority"] = forms.ChoiceField(
+            required=False,
+            choices=(("", "Use AI recommendation"), *Priority.choices),
+            widget=forms.Select(attrs={"class": "form-select"}),
+        )
+        self.fields["ai_department"] = forms.ChoiceField(
+            required=False,
+            choices=(("", "Use AI recommendation"), *((name, name) for name in ALLOWED_DEPARTMENTS)),
+            widget=forms.Select(attrs={"class": "form-select"}),
+        )
+        # An image can supply the missing report text after validated AI analysis.
+        self.fields["title"].required = False
+        self.fields["description"].required = False
+
     def clean_image(self):
-        uploaded = self.cleaned_data.get("image")
-        if not uploaded:
-            return uploaded
-        if uploaded.size > MAX_IMAGE_SIZE:
-            raise ValidationError("Image must be 5 MB or smaller.")
-        try:
-            with PillowImage.open(uploaded) as image:
-                if image.format not in ALLOWED_IMAGE_FORMATS:
-                    raise ValidationError("Upload a JPEG, PNG, GIF, or WebP image.")
-                image.verify()
-        except ValidationError:
-            raise
-        except Exception as exc:
-            raise ValidationError("Upload a valid image file.") from exc
-        uploaded.seek(0)
-        return uploaded
+        return validate_city_image(self.cleaned_data.get("image"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        title = cleaned_data.get("title", "").strip()
+        description = cleaned_data.get("description", "").strip()
+        image = cleaned_data.get("image")
+
+        if not image:
+            if not title:
+                self.add_error("title", "Add a title, or attach a photo for AI-assisted drafting.")
+            if not description:
+                self.add_error("description", "Add a description, or attach a photo for AI-assisted drafting.")
+        return cleaned_data
 
 
 

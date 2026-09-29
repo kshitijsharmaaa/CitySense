@@ -15,6 +15,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.core.management import call_command, CommandError
+from io import StringIO
+from unittest.mock import patch
 
 User = get_user_model()
 
@@ -178,3 +181,59 @@ class AuthenticationViewTests(TestCase):
         response = self.client.post(reverse("accounts:logout"))
         self.assertRedirects(response, reverse("accounts:login"))
         self.assertNotIn("_auth_user_id", self.client.session)
+
+
+class EnsureDemoAdminCommandTests(TestCase):
+    ENV = {
+        "DEMO_ADMIN_EMAIL": "demo-admin@example.com",
+        "DEMO_ADMIN_NAME": "Demo Administrator",
+        "DEMO_ADMIN_PASSWORD": "Violet7_River!Stone2026",
+    }
+
+    @patch.dict("os.environ", ENV)
+    def test_command_creates_one_admin_idempotently_without_printing_password(self):
+        output = StringIO()
+        call_command("ensure_demo_admin", stdout=output)
+        call_command("ensure_demo_admin", stdout=output)
+
+        self.assertEqual(User.objects.count(), 1)
+        user = User.objects.get(email=self.ENV["DEMO_ADMIN_EMAIL"])
+        self.assertEqual(user.name, self.ENV["DEMO_ADMIN_NAME"])
+        self.assertEqual(user.role, User.Role.ADMIN)
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.check_password(self.ENV["DEMO_ADMIN_PASSWORD"]))
+        self.assertNotIn(self.ENV["DEMO_ADMIN_PASSWORD"], output.getvalue())
+
+    @patch.dict("os.environ", ENV)
+    def test_command_upgrades_the_matching_existing_account(self):
+        user = User.objects.create_user(
+            email=self.ENV["DEMO_ADMIN_EMAIL"],
+            name="Old Name",
+            password="OldCivicPassword!2026",
+            role=User.Role.CITIZEN,
+            is_staff=False,
+            is_active=False,
+        )
+
+        call_command("ensure_demo_admin")
+
+        user.refresh_from_db()
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(user.name, self.ENV["DEMO_ADMIN_NAME"])
+        self.assertEqual(user.role, User.Role.ADMIN)
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.check_password(self.ENV["DEMO_ADMIN_PASSWORD"]))
+
+    @patch.dict("os.environ", {
+        "DEMO_ADMIN_EMAIL": "",
+        "DEMO_ADMIN_NAME": "",
+        "DEMO_ADMIN_PASSWORD": "",
+    })
+    def test_command_requires_all_configuration_without_creating_a_user(self):
+        with self.assertRaises(CommandError):
+            call_command("ensure_demo_admin")
+        self.assertFalse(User.objects.exists())

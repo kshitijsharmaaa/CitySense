@@ -62,7 +62,7 @@
             {% if issue.image %}
               <div class="mb-4">
                 <h3 class="h6 fw-bold text-dark mb-2"><i class="bi bi-image me-1"></i> Attached Photo</h3>
-                <img src="{{ issue.image.url }}" alt="Report photo" class="img-fluid rounded-3 border shadow-sm" style="max-height: 450px; width: 100%; object-fit: cover;">
+                <img src="{{ issue.image.url }}" alt="Report photo" class="img-fluid rounded-3 border shadow-sm cs-issue-photo" style="max-height: 450px; width: 100%; object-fit: cover;">
               </div>
             {% endif %}
 
@@ -118,10 +118,12 @@
                 {% include "components/priority_badge.html" with priority=issue.incident.priority %}
               </div>
               <div class="mb-3"><span class="small text-muted-cs d-block mb-1">Assigned Staff Member:</span><strong>{{ issue.incident.assigned_to|default:"Not assigned yet" }}</strong></div>
-              {% if issue.incident.status == "RESOLVED" or issue.incident.resolution_notes or issue.incident.resolved_at %}
+              {% if issue.incident.status == "RESOLVED" or issue.incident.resolution_notes or issue.incident.resolution_image or issue.incident.resolved_at %}
                 <div id="resolution-information" class="border-top pt-3 mb-3">
                   <h3 class="h6 fw-bold text-dark">Resolution information</h3>
+                  {% if issue.incident.status == "RESOLVED" %}<div class="alert alert-success py-2" role="status"><strong>Resolved ✓</strong><br>Your report helped improve this area. Thank you for contributing to a cleaner and safer India.</div>{% endif %}
                   {% if issue.incident.resolution_notes %}<p class="small mb-2"><strong>Resolution update:</strong> {{ issue.incident.resolution_notes|linebreaksbr }}</p>{% endif %}
+                  {% if issue.incident.resolution_image %}<img src="{{ issue.incident.resolution_image.url }}" alt="Photo showing the completed civic repair" class="img-fluid rounded border mb-2" loading="lazy">{% endif %}
                   {% if issue.incident.resolved_at %}<p class="small mb-2"><strong>Resolved:</strong> {{ issue.incident.resolved_at|date:"M j, Y, g:i A" }}</p>{% endif %}
                   {% if issue.incident.department %}<p class="small mb-2"><strong>Assigned Department:</strong> {{ issue.incident.department.name }}</p>{% endif %}
                   {% if issue.incident.assigned_to %}<p class="small mb-0"><strong>Assigned Staff Member:</strong> {{ issue.incident.assigned_to.name }}</p>{% endif %}

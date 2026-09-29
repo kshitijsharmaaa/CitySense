@@ -144,6 +144,12 @@ class Incident(models.Model):
         default="",
         verbose_name="Resolution notes",
     )
+    resolution_image = models.ImageField(
+        upload_to="incidents/resolutions/%Y/%m/",
+        null=True,
+        blank=True,
+        verbose_name="Resolution photo",
+    )
     resolved_at = models.DateTimeField(
         null=True,
         blank=True,

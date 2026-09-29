@@ -11,11 +11,15 @@ Tests cover:
 - Incident __str__ representation
 """
 
+from io import BytesIO
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.urls import reverse
 from datetime import timedelta
+from PIL import Image
 
 from issues.models import Category, Department, Issue, Priority
 from .intelligence import calculate_incident_severity
@@ -283,6 +287,12 @@ class AdminIncidentWorkflowTests(TestCase):
         data.update(overrides)
         return data
 
+    @staticmethod
+    def resolution_photo():
+        buffer = BytesIO()
+        Image.new("RGB", (3, 2), color="green").save(buffer, format="JPEG")
+        return SimpleUploadedFile("repaired-road.jpg", buffer.getvalue(), content_type="image/jpeg")
+
     def test_anonymous_users_are_redirected_from_management_routes(self):
         for url in (
             reverse("incidents:admin_dashboard"),
@@ -297,7 +307,8 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 403)
         response = self.client.post(
             reverse("incidents:admin_detail", args=(self.incident.pk,)),
-            self.post_data(status=IncidentStatus.RESOLVED, resolution_notes="Unauthorized"),
+            {**self.post_data(status=IncidentStatus.RESOLVED, resolution_notes="Unauthorized"),
+             "resolution_image": self.resolution_photo()},
         )
         self.assertEqual(response.status_code, 403)
         self.incident.refresh_from_db()
@@ -394,6 +405,53 @@ class AdminIncidentWorkflowTests(TestCase):
         self.assertEqual(history.new_status, IncidentStatus.RESOLVED)
         self.assertEqual(history.changed_by, self.admin)
         self.assertEqual(history.comment, "Resolution verified on site.")
+
+    def test_admin_can_upload_resolution_photo(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            {**self.post_data(status=IncidentStatus.RESOLVED), "resolution_image": self.resolution_photo()},
+        )
+        self.assertRedirects(response, reverse("incidents:admin_detail", args=(self.incident.pk,)))
+        self.incident.refresh_from_db()
+        self.assertTrue(self.incident.resolution_image)
+        self.assertTrue(self.incident.resolution_image.storage.exists(self.incident.resolution_image.name))
+
+    def test_invalid_resolution_photo_is_rejected_without_changing_incident(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("incidents:admin_detail", args=(self.incident.pk,)),
+            {**self.post_data(status=IncidentStatus.RESOLVED),
+             "resolution_image": SimpleUploadedFile("not-image.jpg", b"not an image", content_type="image/jpeg")},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors)
+        self.incident.refresh_from_db()
+        self.assertEqual(self.incident.status, IncidentStatus.REPORTED)
+        self.assertFalse(self.incident.resolution_image)
+        self.assertFalse(self.incident.status_history.exists())
+
+    def test_citizen_sees_resolution_photo_and_appreciation_only_while_resolved(self):
+        self.incident.status = IncidentStatus.RESOLVED
+        self.incident.resolution_notes = "The pothole was repaired and inspected."
+        self.incident.resolved_at = timezone.now()
+        self.incident.resolution_image.save("repaired.jpg", self.resolution_photo(), save=True)
+        self.client.force_login(self.citizen)
+        url = reverse("incidents:detail", args=(self.incident.pk,))
+
+        resolved_page = self.client.get(url)
+        self.assertEqual(resolved_page.status_code, 200)
+        self.assertContains(resolved_page, "Your report helped improve this area.")
+        self.assertContains(resolved_page, self.incident.resolution_image.url)
+        self.assertContains(resolved_page, "The pothole was repaired and inspected.")
+
+        self.incident.status = IncidentStatus.IN_PROGRESS
+        self.incident.resolved_at = None
+        self.incident.save()
+        reopened_page = self.client.get(url)
+        self.assertNotContains(reopened_page, "Your report helped improve this area.")
+        self.assertContains(reopened_page, self.incident.resolution_image.url)
+        self.assertContains(reopened_page, "Previous resolution record")
 
     def test_invalid_post_does_not_change_any_incident_fields_or_history(self):
         self.client.force_login(self.admin)

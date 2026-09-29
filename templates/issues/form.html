@@ -19,6 +19,14 @@
     object-fit: cover;
     border-radius: var(--cs-radius-md);
   }
+  #camera-preview {
+    display: block;
+    width: 100%;
+    max-height: min(65vh, 560px);
+    background: #101820;
+    object-fit: contain;
+    border-radius: var(--cs-radius-md);
+  }
 </style>
 {% endblock %}
 
@@ -53,7 +61,7 @@
 
         <div class="card">
           <div class="card-body p-4 p-md-5">
-            <form method="post" action="{% url 'issues:create' %}" enctype="multipart/form-data" id="issue-report-form">
+            <form method="post" action="{% url 'issues:create' %}" enctype="multipart/form-data" id="issue-report-form" data-analyze-url="{% url 'issues:analyze_photo' %}">
               {% csrf_token %}
 
               <div class="cs-form-section-heading"><span>01</span><div><h2 class="h5 fw-bold text-dark mb-1">Tell us what happened</h2><p class="small text-muted-cs mb-0">A clear description helps CitySense assess your report.</p></div></div>
@@ -63,13 +71,13 @@
                 <label for="id_title" class="form-label fw-bold text-dark fs-6">
                   Report title <span class="text-danger">*</span>
                 </label>
-                <input type="text" name="title" id="id_title" class="form-control form-control-lg {% if form.title.errors %}is-invalid{% endif %}" placeholder="e.g. Large pothole near central market street" value="{{ form.title.value|default:'' }}" required maxlength="255">
+                <input type="text" name="title" id="id_title" class="form-control form-control-lg {% if form.title.errors %}is-invalid{% endif %}" placeholder="e.g. Large pothole near central market street" value="{{ form.title.value|default:'' }}" maxlength="255">
                 {% if form.title.errors %}
                   <div class="invalid-feedback d-block text-danger small mt-1">
                     {{ form.title.errors.0 }}
                   </div>
                 {% else %}
-                  <div class="form-text text-muted-cs small">Provide a concise headline describing the problem.</div>
+                  <div class="form-text text-muted-cs small">Write a headline yourself, or add a photo and ask CitySense to draft it.</div>
                 {% endif %}
               </div>
 
@@ -78,23 +86,34 @@
                 <label for="id_description" class="form-label fw-bold text-dark fs-6">
                   What happened <span class="text-danger">*</span>
                 </label>
-                <textarea name="description" id="id_description" rows="5" class="form-control {% if form.description.errors %}is-invalid{% endif %}" placeholder="Provide clear details regarding the problem, exact surroundings, or potential safety hazards..." required>{{ form.description.value|default:'' }}</textarea>
+                <textarea name="description" id="id_description" rows="5" class="form-control {% if form.description.errors %}is-invalid{% endif %}" placeholder="Provide clear details regarding the problem, exact surroundings, or potential safety hazards...">{{ form.description.value|default:'' }}</textarea>
                 {% if form.description.errors %}
                   <div class="invalid-feedback d-block text-danger small mt-1">
                     {{ form.description.errors.0 }}
                   </div>
                 {% else %}
-                  <div class="form-text text-muted-cs small">CitySense will suggest a problem type, priority, and department based on your description.</div>
+                  <div class="form-text text-muted-cs small">You can write this yourself or review and edit a draft generated from your photo.</div>
                 {% endif %}
               </div>
 
               <!-- 3. Photo Upload -->
               <div class="cs-form-section-heading"><span>02</span><div><h2 class="h5 fw-bold text-dark mb-1">Add evidence</h2><p class="small text-muted-cs mb-0">A photo is optional and can help explain the issue.</p></div></div>
               <div class="mb-4">
-                <label for="id_image" class="form-label fw-bold text-dark fs-6">
-                  Photo <span class="badge bg-light text-muted border ms-1">Optional</span>
-                </label>
-                <input type="file" name="image" id="id_image" class="form-control {% if form.image.errors %}is-invalid{% endif %}" accept="image/jpeg,image/png,image/gif,image/webp">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                  <label for="id_image" class="form-label fw-bold text-dark fs-6 mb-0">
+                    Add a photo <span class="badge bg-light text-muted border ms-1">Optional</span>
+                  </label>
+                  <span class="small text-muted-cs">Take a picture or choose an existing photo.</span>
+                </div>
+                <input type="file" name="image" id="id_image" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp">
+                <div class="d-flex flex-wrap gap-2 cs-photo-actions">
+                  <button type="button" id="take-photo" class="btn btn-cs-primary">
+                    <i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Take Photo
+                  </button>
+                  <button type="button" id="choose-photo" class="btn btn-cs-outline">
+                    <i class="bi bi-image me-1" aria-hidden="true"></i> Choose from Files
+                  </button>
+                </div>
                 <div id="image-client-error" class="invalid-feedback d-none"></div>
                 {% if form.image.errors %}
                   <div class="invalid-feedback d-block text-danger small mt-1">
@@ -104,10 +123,39 @@
                   <div class="form-text text-muted-cs small">Supported formats: JPEG, PNG, GIF, WebP. Maximum size: 5 MB.</div>
                 {% endif %}
 
-                <!-- Instant Image Preview Box -->
-                <div id="image-preview-wrapper" class="mt-3 d-none">
-                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><span class="small fw-semibold text-dark"><i class="bi bi-paperclip me-1"></i><span id="image-file-name">Image preview</span></span><button type="button" id="remove-image" class="btn btn-sm btn-cs-outline py-1" aria-label="Remove selected image"><i class="bi bi-x-lg me-1"></i>Remove</button></div>
+                <div id="image-preview-wrapper" class="cs-photo-preview mt-3 d-none">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><span class="small fw-semibold text-dark"><i class="bi bi-paperclip me-1"></i><span id="image-file-name">Photo selected</span></span><button type="button" id="remove-image" class="btn btn-sm btn-cs-outline py-1" aria-label="Remove selected image"><i class="bi bi-x-lg me-1"></i>Remove</button></div>
                   <img id="image-preview" src="#" alt="Preview of selected report photo" class="img-fluid image-preview-box border">
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <button type="button" id="retake-photo" class="btn btn-cs-outline btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i> Retake</button>
+                    <button type="button" id="choose-another-photo" class="btn btn-cs-outline btn-sm"><i class="bi bi-images me-1"></i> Choose another</button>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <button type="button" id="analyze-photo" class="btn btn-cs-outline" disabled>
+                    <i class="bi bi-stars me-1" aria-hidden="true"></i> Analyze photo with AI
+                  </button>
+                  <div class="form-text text-muted-cs">Optional. CitySense can draft your report from the photo. You can review and edit every field.</div>
+                </div>
+                <div id="ai-draft-status" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+                <div id="ai-triage-result" class="cs-ai-report-preview d-none mt-3" aria-live="polite">
+                  <div class="fw-bold text-dark mb-1"><i class="bi bi-stars text-primary me-1"></i> AI-generated — please review</div>
+                  <div class="small text-muted-cs">Suggested category: <strong data-ai-category></strong> · Priority: <strong data-ai-priority></strong> · Department: <strong data-ai-department></strong></div>
+                  <div class="small text-muted-cs mt-1" data-ai-confidence></div>
+                </div>
+                <div class="row g-3 mt-2">
+                  <div class="col-md-4">
+                    <label for="id_ai_category" class="form-label small fw-semibold">Category</label>
+                    {{ form.ai_category }}
+                  </div>
+                  <div class="col-md-4">
+                    <label for="id_ai_priority" class="form-label small fw-semibold">Priority</label>
+                    {{ form.ai_priority }}
+                  </div>
+                  <div class="col-md-4">
+                    <label for="id_ai_department" class="form-label small fw-semibold">Department</label>
+                    {{ form.ai_department }}
+                  </div>
                 </div>
               </div>
 
@@ -154,6 +202,27 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="camera-modal" tabindex="-1" aria-labelledby="camera-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="camera-modal-title">Take a photo</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close camera"></button>
+        </div>
+        <div class="modal-body">
+          <video id="camera-preview" autoplay playsinline muted aria-label="Live camera preview"></video>
+          <div id="camera-error" class="alert alert-warning d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-cs-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="capture-photo" class="btn btn-cs-primary btn-lg" disabled>
+            <i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Capture Photo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 {% endblock %}
 
@@ -169,16 +238,158 @@ document.addEventListener("DOMContentLoaded", function() {
   const imageError = document.getElementById("image-client-error");
   const imageName = document.getElementById("image-file-name");
   const removeImage = document.getElementById("remove-image");
+  const reportForm = document.getElementById("issue-report-form");
+  const analyzeButton = document.getElementById("analyze-photo");
+  const draftStatus = document.getElementById("ai-draft-status");
+  const triagePreview = document.getElementById("ai-triage-result");
+  const categoryInput = document.getElementById("id_ai_category");
+  const priorityInput = document.getElementById("id_ai_priority");
+  const departmentInput = document.getElementById("id_ai_department");
+  const submitButton = document.getElementById("submit-report");
+  const photoActionButtons = [
+    document.getElementById("take-photo"),
+    document.getElementById("choose-photo"),
+    document.getElementById("retake-photo"),
+    document.getElementById("choose-another-photo")
+  ];
   const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   const maxImageSize = 5 * 1024 * 1024;
 
+  let selectedImageFile = imageInput ? imageInput.files[0] || null : null;
+  const cameraModalElement = document.getElementById("camera-modal");
+  const cameraModal = bootstrap.Modal.getOrCreateInstance(cameraModalElement);
+  const cameraVideo = document.getElementById("camera-preview");
+  const cameraError = document.getElementById("camera-error");
+  const captureButton = document.getElementById("capture-photo");
+  let cameraStream = null;
+  let processingCapturedFile = false;
+  let analysisInProgress = false;
+
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(function(track) { track.stop(); });
+      cameraStream = null;
+    }
+    cameraVideo.pause();
+    cameraVideo.srcObject = null;
+    captureButton.disabled = true;
+  }
+
+  function showCameraError(message) {
+    cameraError.textContent = message;
+    cameraError.classList.remove("d-none");
+    cameraVideo.classList.add("d-none");
+    captureButton.disabled = true;
+  }
+
+  async function openCamera() {
+    cameraError.textContent = "";
+    cameraError.classList.add("d-none");
+    cameraVideo.classList.remove("d-none");
+    cameraModal.show();
+
+    if (!window.isSecureContext) {
+      showCameraError("Camera access requires a secure page (HTTPS or localhost). You can still choose a photo from files.");
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showCameraError("This browser does not support camera access. Choose a photo from files instead.");
+      return;
+    }
+
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+      cameraVideo.srcObject = cameraStream;
+      await cameraVideo.play();
+      captureButton.disabled = false;
+    } catch (error) {
+      const message = error && error.name === "NotAllowedError"
+        ? "Camera permission was denied. Allow camera access in your browser settings, or choose a photo from files."
+        : error && error.name === "NotFoundError"
+          ? "No camera was found on this device. Choose a photo from files instead."
+          : error && error.name === "NotReadableError"
+            ? "The camera is busy or unavailable. Close other apps using it, or choose a photo from files."
+            : "Camera access is unavailable right now. Choose a photo from files instead.";
+      stopCamera();
+      showCameraError(message);
+    }
+  }
+
+  function openImagePicker() {
+    if (!imageInput) return;
+    imageInput.removeAttribute("capture");
+    imageInput.click();
+  }
+
+  document.getElementById("take-photo").addEventListener("click", function() {
+    openCamera();
+  });
+  document.getElementById("choose-photo").addEventListener("click", function() {
+    openImagePicker();
+  });
+  document.getElementById("retake-photo").addEventListener("click", function() {
+    openCamera();
+  });
+  document.getElementById("choose-another-photo").addEventListener("click", function() {
+    openImagePicker();
+  });
+
+  cameraModalElement.addEventListener("hidden.bs.modal", stopCamera);
+  window.addEventListener("pagehide", stopCamera);
+
+  captureButton.addEventListener("click", function() {
+    if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
+    const maxDimension = 1920;
+    const resize = Math.min(1, maxDimension / Math.max(cameraVideo.videoWidth, cameraVideo.videoHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(cameraVideo.videoWidth * resize);
+    canvas.height = Math.round(cameraVideo.videoHeight * resize);
+    canvas.getContext("2d").drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(function(blob) {
+      if (!blob) {
+        showCameraError("The photo could not be captured. Please try again or choose a photo from files.");
+        return;
+      }
+      const capturedFile = new File([blob], "captured-photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
+      selectedImageFile = capturedFile;
+      try {
+        const transfer = new DataTransfer();
+        transfer.items.add(capturedFile);
+        imageInput.files = transfer.files;
+      } catch (error) {
+        // The formdata event below includes this File on browsers that prevent
+        // assigning to the native file input.
+      }
+      processingCapturedFile = true;
+      imageInput.dispatchEvent(new Event("change", { bubbles: true }));
+      processingCapturedFile = false;
+      stopCamera();
+      cameraModal.hide();
+    }, "image/jpeg", 0.88);
+  });
+
+  // Preserve a camera-captured File in both fetch(FormData) and normal browser
+  // form submission, including browsers that reject assignment to input.files.
+  reportForm.addEventListener("formdata", function(event) {
+    if (selectedImageFile) {
+      event.formData.set("image", selectedImageFile, selectedImageFile.name);
+    }
+  });
+
   if (imageInput) {
     imageInput.addEventListener("change", function() {
-      const file = this.files[0];
+      const file = this.files[0] || (processingCapturedFile ? selectedImageFile : null);
+      selectedImageFile = file || null;
       imageError.classList.add("d-none");
       imageInput.classList.remove("is-invalid");
       previewWrapper.classList.add("d-none");
       previewImg.removeAttribute("src");
+      analyzeButton.disabled = !file;
+      triagePreview.classList.add("d-none");
+      draftStatus.classList.add("d-none");
       if (file) {
         if (!allowedTypes.includes(file.type) || file.size > maxImageSize) {
           imageError.textContent = file.size > maxImageSize
@@ -186,14 +397,18 @@ document.addEventListener("DOMContentLoaded", function() {
             : "Choose a JPEG, PNG, GIF, or WebP image.";
           imageError.classList.remove("d-none");
           imageInput.classList.add("is-invalid");
+          selectedImageFile = null;
+          analyzeButton.disabled = true;
           this.value = "";
           return;
         }
         const reader = new FileReader();
         reader.onload = function(e) {
+          if (selectedImageFile !== file) return;
           previewImg.src = e.target.result;
           imageName.textContent = file.name;
           previewWrapper.classList.remove("d-none");
+          analyzeSelectedPhoto();
         }
         reader.readAsDataURL(file);
       } else {
@@ -202,6 +417,10 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     removeImage.addEventListener("click", function() {
       imageInput.value = "";
+      selectedImageFile = null;
+      analyzeButton.disabled = true;
+      triagePreview.classList.add("d-none");
+      draftStatus.classList.add("d-none");
       previewImg.removeAttribute("src");
       previewWrapper.classList.add("d-none");
       imageError.classList.add("d-none");
@@ -209,6 +428,61 @@ document.addEventListener("DOMContentLoaded", function() {
       imageInput.focus();
     });
   }
+
+  async function analyzeSelectedPhoto() {
+    if (!selectedImageFile || analysisInProgress) return;
+    analysisInProgress = true;
+    const originalContent = analyzeButton.innerHTML;
+    analyzeButton.disabled = true;
+    submitButton.disabled = true;
+    photoActionButtons.forEach(function(button) { button.disabled = true; });
+    analyzeButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span> Analyzing photo…';
+    draftStatus.className = "alert alert-info mt-3 mb-0";
+    draftStatus.textContent = "Analyzing the photo and any details you entered…";
+    triagePreview.classList.add("d-none");
+
+    try {
+      const response = await fetch(reportForm.dataset.analyzeUrl, {
+        method: "POST",
+        body: new FormData(reportForm),
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Photo analysis is unavailable. You can enter the report manually.");
+      if (!selectedImageFile) return;
+
+      const titleInput = document.getElementById("id_title");
+      const descriptionInput = document.getElementById("id_description");
+      if (!titleInput.value.trim()) titleInput.value = result.title;
+      if (!descriptionInput.value.trim()) descriptionInput.value = result.description;
+      if (!categoryInput.value) categoryInput.value = result.category;
+      if (!priorityInput.value) priorityInput.value = result.priority;
+      if (!departmentInput.value) departmentInput.value = result.department;
+      document.querySelector("[data-ai-category]").textContent = result.category;
+      document.querySelector("[data-ai-priority]").textContent = result.priority;
+      document.querySelector("[data-ai-department]").textContent = result.department;
+      document.querySelector("[data-ai-confidence]").textContent = result.confidence < 0.5
+        ? "AI is uncertain about this image. Please check the details carefully."
+        : "AI-generated — please review and edit before submitting.";
+      triagePreview.classList.remove("d-none");
+      draftStatus.className = "alert alert-success mt-3 mb-0";
+      draftStatus.textContent = "Draft ready. Review and edit the title and description before submitting.";
+    } catch (error) {
+      draftStatus.className = "alert alert-warning mt-3 mb-0";
+      draftStatus.textContent = error.message.toLowerCase().includes("still attached")
+        ? error.message
+        : error.message + " Your selected photo is still attached.";
+    } finally {
+      analysisInProgress = false;
+      analyzeButton.disabled = false;
+      analyzeButton.innerHTML = originalContent;
+      submitButton.disabled = false;
+      photoActionButtons.forEach(function(button) { button.disabled = false; });
+    }
+  }
+
+  analyzeButton.addEventListener("click", analyzeSelectedPhoto);
 
   // Leaflet Map Initialization
   const mapElement = document.getElementById("picker-map");
@@ -281,7 +555,11 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  document.getElementById("issue-report-form").addEventListener("submit", function(event) {
+  reportForm.addEventListener("submit", function(event) {
+    if (analysisInProgress) {
+      event.preventDefault();
+      return;
+    }
     if (imageInput.files[0] && (!allowedTypes.includes(imageInput.files[0].type) || imageInput.files[0].size > maxImageSize)) {
       event.preventDefault();
       imageInput.dispatchEvent(new Event("change"));

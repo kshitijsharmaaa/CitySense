@@ -7,9 +7,9 @@
 </style>
 {% endblock %}
 {% block content %}
-<section class="cs-command-page py-4 py-lg-5"><div class="container">
+<section class="cs-command-page cs-page-shell py-4 py-lg-5"><div class="container">
 <header class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4 mb-lg-5">
-<div><div class="cs-admin-eyebrow mb-2"><i class="bi bi-shield-check me-1"></i> CitySense Operations</div><h1 class="display-6 fw-bold text-dark mb-2">Civic Operations</h1><p class="text-muted-cs mb-0">Monitor, review and coordinate responses to civic incidents.</p></div>
+<div><div class="cs-admin-eyebrow mb-2"><i class="bi bi-shield-check me-1"></i> CitySense Operations</div><h1 class="display-6 cs-page-heading mb-2">Civic Operations</h1><p class="text-muted-cs mb-0">Monitor, review and coordinate responses to civic incidents.</p></div>
 <a href="{% url 'home' %}" class="btn btn-cs-outline d-inline-flex align-items-center gap-2"><i class="bi bi-arrow-left"></i> Home</a>
 </header>
 <section class="cs-admin-panel p-3 p-lg-4 mb-4" aria-labelledby="filters-title">
@@ -25,7 +25,7 @@
 <section class="cs-admin-panel overflow-hidden" aria-labelledby="queue-title">
 <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 p-3 p-lg-4 border-bottom"><div><h2 id="queue-title" class="h5 fw-bold text-dark mb-1">Incidents</h2><p class="small text-muted-cs mb-0">{{ page_obj.paginator.count }} matching incident{{ page_obj.paginator.count|pluralize }} · recently updated first.</p></div>{% if page_obj.has_other_pages %}<span class="small text-muted-cs">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% endif %}</div>
 {% if incidents %}
-<div class="table-responsive"><table class="table cs-admin-table mb-0"><caption class="visually-hidden">Incidents and their current response status</caption>
+<div class="table-responsive d-none d-lg-block"><table class="table cs-admin-table mb-0"><caption class="visually-hidden">Incidents and their current response status</caption>
 <thead><tr><th scope="col">Incident</th><th scope="col">Issue type</th><th scope="col">Priority</th><th scope="col">Severity score</th><th scope="col">Reports received</th><th scope="col">Department</th><th scope="col">Location</th><th scope="col">Current status</th><th scope="col">Date opened</th><th scope="col"><span class="visually-hidden">Review</span></th></tr></thead>
 <tbody>{% for incident in incidents %}<tr{% if incident.priority == "CRITICAL" %} class="cs-admin-critical"{% endif %}>
 <td><span class="cs-admin-code mb-2">Incident ID: {{ incident.incident_code }}</span><div><a class="cs-admin-title" href="{% url 'incidents:admin_detail' incident.pk %}">{{ incident.title }}</a></div></td>
@@ -36,6 +36,17 @@
 <td class="text-muted-cs text-nowrap">{{ incident.created_at|date:"M j, Y" }}<span class="d-block small">{{ incident.created_at|date:"g:i A" }}</span></td>
 <td><a href="{% url 'incidents:admin_detail' incident.pk %}" class="btn btn-cs-outline btn-sm text-nowrap">Review incident <i class="bi bi-arrow-right ms-1"></i></a></td>
 </tr>{% endfor %}</tbody></table></div>
+<div class="cs-admin-mobile-queue d-lg-none" aria-label="Incident queue">
+{% for incident in incidents %}
+<article class="cs-admin-mobile-card">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><span class="cs-admin-code">{{ incident.incident_code }}</span>{% include "components/status_badge.html" with status=incident.status %}</div>
+  <h3 class="h6 fw-bold mb-3"><a class="cs-admin-title" href="{% url 'incidents:admin_detail' incident.pk %}">{{ incident.title }}</a></h3>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3">{% include "components/priority_badge.html" with priority=incident.priority %}<span class="small text-muted-cs">{{ incident.get_category_display }}</span></div>
+  <dl class="cs-admin-mobile-meta mb-3"><div><dt>Department</dt><dd>{{ incident.department|default:"Unassigned" }}</dd></div><div><dt>Reports received</dt><dd>{{ incident.report_count }}</dd></div><div><dt>Severity score</dt><dd>{% if incident.severity_score != None %}{{ incident.severity_score|floatformat:0 }} / 100{% else %}Not assessed{% endif %}</dd></div><div><dt>Location</dt><dd>{% if incident.latitude is not None and incident.longitude is not None %}{{ incident.latitude|floatformat:3 }}, {{ incident.longitude|floatformat:3 }}{% else %}Not pinned{% endif %}</dd></div><div><dt>Date opened</dt><dd>{{ incident.created_at|date:"M j, Y" }}</dd></div></dl>
+  <a href="{% url 'incidents:admin_detail' incident.pk %}" class="btn btn-cs-primary w-100">Review incident <i class="bi bi-arrow-right ms-1"></i></a>
+</article>
+{% endfor %}
+</div>
 {% else %}<div class="p-3 p-md-5">{% include "components/empty_state.html" with title="No incidents match" message="Try changing or clearing the selected filters." icon="bi-inbox" %}</div>{% endif %}
 {% if page_obj.has_other_pages %}<nav class="cs-admin-pager p-3 p-lg-4 border-top" aria-label="Incident queue pages"><ul class="pagination justify-content-center justify-content-sm-end mb-0">
 {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?status={{ request.GET.status|urlencode }}&amp;priority={{ request.GET.priority|urlencode }}&amp;category={{ request.GET.category|urlencode }}&amp;department={{ request.GET.department|urlencode }}&amp;page={{ page_obj.previous_page_number }}" aria-label="Previous page"><i class="bi bi-chevron-left"></i><span class="ms-1">Previous</span></a></li>{% else %}<li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i><span class="ms-1">Previous</span></span></li>{% endif %}

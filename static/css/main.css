@@ -873,6 +873,497 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* --------------------------------------------------------------------------
+   Mobile web navigation and page layouts
+   -------------------------------------------------------------------------- */
+.cs-navbar-drawer .offcanvas-body {
+  display: flex;
+  align-items: center;
+}
+
+.cs-mobile-nav {
+  display: none;
+}
+
+.cs-mobile-report-card {
+  display: block;
+  min-width: 0;
+  margin: .75rem;
+  padding: 1rem;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-lg);
+  background: #fff;
+  box-shadow: var(--cs-shadow-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.cs-mobile-report-card h3 {
+  overflow-wrap: anywhere;
+}
+
+.cs-mobile-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .6rem 1rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--cs-border);
+  color: var(--cs-text-muted);
+  font-size: .78rem;
+}
+
+.cs-mobile-report-meta span strong {
+  display: block;
+  margin-bottom: .1rem;
+  color: var(--cs-text-heading);
+  font-size: .72rem;
+}
+
+.cs-admin-mobile-queue {
+  padding: .75rem;
+}
+
+.cs-admin-mobile-card {
+  min-width: 0;
+  margin-bottom: .85rem;
+  padding: 1rem;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-lg);
+  background: #fff;
+  box-shadow: var(--cs-shadow-sm);
+}
+
+.cs-admin-mobile-card:last-child {
+  margin-bottom: 0;
+}
+
+.cs-admin-mobile-card h3 {
+  overflow-wrap: anywhere;
+}
+
+.cs-admin-mobile-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.cs-admin-mobile-meta div {
+  min-width: 0;
+}
+
+.cs-admin-mobile-meta dt {
+  color: var(--cs-text-muted);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.cs-admin-mobile-meta dd {
+  margin: .15rem 0 0;
+  color: var(--cs-text-heading);
+  font-size: .85rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 991.98px) {
+  body.has-mobile-citizen-nav {
+    padding-bottom: calc(4.8rem + env(safe-area-inset-bottom));
+  }
+
+  .cs-navbar-drawer {
+    --bs-offcanvas-width: min(21rem, 88vw);
+    z-index: 1060;
+  }
+
+  .cs-navbar-drawer .offcanvas-body {
+    display: block;
+    padding: .75rem 1.25rem 1.5rem;
+  }
+
+  .cs-navbar-drawer .navbar-nav {
+    margin: 0 !important;
+  }
+
+  .cs-navbar-drawer .cs-nav-link {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+  }
+
+  .cs-navbar-drawer .offcanvas-header {
+    border-bottom: 1px solid var(--cs-border);
+    background: #f7faff;
+  }
+
+  .cs-navbar-drawer .offcanvas-body > .d-flex {
+    align-items: stretch !important;
+    flex-direction: column;
+    margin-top: .75rem !important;
+  }
+
+  .cs-navbar-drawer .offcanvas-body > .d-flex > *,
+  .cs-navbar-drawer .offcanvas-body > .d-flex form,
+  .cs-navbar-drawer .offcanvas-body > .d-flex a {
+    width: 100%;
+  }
+
+  .cs-navbar-drawer .offcanvas-body > .d-flex .badge {
+    display: block;
+    padding: .75rem !important;
+    text-align: left;
+  }
+
+  .cs-navbar-drawer .offcanvas-body > .d-flex .btn {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .cs-page-shell .row > [class*="col-"] {
+    min-width: 0;
+  }
+
+  .cs-progress-wrap {
+    padding: 1rem;
+  }
+
+  .cs-progress-tracker {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: stretch;
+  }
+
+  .cs-progress-step {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    align-items: start;
+    gap: .7rem;
+    min-height: 2.8rem;
+    text-align: left;
+    font-size: .84rem;
+  }
+
+  .cs-progress-step:before,
+  .cs-progress-step:first-child:before,
+  .cs-progress-step:last-child:before {
+    top: 1.55rem;
+    left: .78rem;
+    width: 2px;
+    height: calc(100% - .3rem);
+  }
+
+  .cs-progress-step:last-child:before {
+    display: none;
+  }
+
+  .cs-progress-marker {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  .cs-progress-time {
+    font-size: .74rem;
+  }
+
+  .cs-issue-photo {
+    height: auto !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    background: var(--cs-bg-alt);
+  }
+
+  #dashboard-map,
+  #picker-map,
+  .cs-incident-map,
+  .cs-report-map,
+  .cs-review-location-map {
+    width: 100%;
+    max-width: 100%;
+    height: 280px;
+    min-height: 240px;
+    border-radius: var(--cs-radius-md);
+  }
+
+  .leaflet-container {
+    max-width: 100%;
+  }
+
+  .leaflet-control-zoom {
+    margin: .5rem !important;
+  }
+
+  .cs-admin-filters select,
+  .cs-review-form select,
+  .cs-review-form textarea,
+  .cs-page-shell .form-control,
+  .cs-page-shell .form-select {
+    min-height: 46px;
+    font-size: 1rem;
+  }
+
+  .cs-page-shell .btn {
+    min-height: 44px;
+  }
+
+  .cs-mobile-nav {
+    position: fixed;
+    z-index: 1040;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: end;
+    min-height: calc(4.15rem + env(safe-area-inset-bottom));
+    padding: .4rem .35rem calc(.35rem + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(203, 213, 225, .8);
+    background: rgba(255, 255, 255, .97);
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, .08);
+    backdrop-filter: blur(16px);
+  }
+
+  .cs-mobile-nav-item,
+  .cs-mobile-nav-report {
+    display: flex;
+    min-width: 0;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: .12rem;
+    border: 0;
+    border-radius: .85rem;
+    background: transparent;
+    color: var(--cs-text-muted);
+    font: inherit;
+    font-size: .68rem;
+    font-weight: 650;
+    line-height: 1.1;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .cs-mobile-nav-item i {
+    font-size: 1.2rem;
+  }
+
+  .cs-mobile-nav-item.is-current {
+    color: var(--cs-primary);
+  }
+
+  .cs-mobile-nav-report {
+    color: var(--cs-primary);
+    font-weight: 750;
+  }
+
+  .cs-mobile-nav-plus {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    margin-top: -1.05rem;
+    place-items: center;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: var(--cs-primary);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, .28);
+    color: #fff;
+    font-size: 1.35rem;
+  }
+
+  .cs-mobile-nav a:focus-visible,
+  .cs-mobile-nav button:focus-visible {
+    outline: 3px solid rgba(2, 132, 199, .45);
+    outline-offset: 2px;
+  }
+
+  .cs-profile-sheet {
+    --bs-offcanvas-height: auto;
+    display: block;
+    max-height: min(75vh, 34rem);
+    border: 1px solid var(--cs-border);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, .14);
+  }
+
+  .cs-profile-sheet .offcanvas-header {
+    padding: 1.2rem 1.25rem .9rem;
+  }
+
+  .cs-mobile-eyebrow {
+    color: var(--cs-accent);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  .cs-profile-action {
+    display: flex;
+    width: 100%;
+    min-height: 3rem;
+    align-items: center;
+    gap: .8rem;
+    padding: .75rem .5rem;
+    border: 0;
+    border-bottom: 1px solid var(--cs-border);
+    background: transparent;
+    color: var(--cs-text-heading);
+    text-align: left;
+    text-decoration: none;
+  }
+
+  .cs-profile-action i:first-child {
+    color: var(--cs-accent);
+    font-size: 1.15rem;
+  }
+
+  .cs-profile-logout {
+    color: #b91c1c;
+  }
+
+  .cs-profile-sheet .offcanvas-body form:last-child .cs-profile-action {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .cs-page-shell > .container {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .cs-story-hero h1 {
+    max-width: 12ch;
+    font-size: clamp(1.9rem, 8.4vw, 2.55rem);
+  }
+
+  .cs-story-hero .col-lg-7 {
+    width: 100%;
+  }
+
+  .cs-story-hero .col-lg-5 {
+    display: none;
+  }
+
+  .cs-story-avatar {
+    right: -1vw;
+    bottom: 0;
+    width: 39vw;
+    height: 42%;
+  }
+
+  .cs-story-hero .lead {
+    max-width: 25rem;
+    font-size: .84rem;
+  }
+
+  .cs-story-hero .d-flex.flex-wrap.gap-3.mb-4 {
+    max-width: 62%;
+    gap: .45rem !important;
+  }
+
+  .cs-story-hero .d-flex.flex-wrap.gap-3.mb-4 .btn {
+    width: 100%;
+    min-height: 42px;
+    padding: .55rem .7rem;
+    font-size: .78rem;
+  }
+
+  .cs-story-hero-layer::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .97) 0%, rgba(255, 255, 255, .91) 58%, rgba(255, 255, 255, .32) 100%);
+  }
+
+  .cs-dashboard-metric {
+    padding: .8rem !important;
+  }
+
+  .cs-dashboard-metric .fs-3 {
+    font-size: 1.6rem !important;
+  }
+
+  .cs-dashboard-metric .small {
+    font-size: .74rem;
+    line-height: 1.25;
+  }
+
+  .cs-dashboard-row {
+    align-items: flex-start !important;
+  }
+
+  .cs-page-shell .card-body {
+    padding: 1.15rem !important;
+  }
+
+  .cs-admin-mobile-queue {
+    padding: .65rem;
+  }
+
+  .cs-admin-mobile-card {
+    padding: .9rem;
+  }
+
+  .cs-review-stat {
+    padding: .8rem;
+  }
+
+  .cs-review-stat-value {
+    font-size: 1.1rem;
+  }
+
+  .cs-review-form .btn,
+  .cs-review-form button,
+  .cs-review-form select {
+    min-height: 46px;
+  }
+
+  #picker-map,
+  #dashboard-map,
+  .cs-incident-map,
+  .cs-report-map,
+  .cs-review-location-map {
+    height: 260px;
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 380px) {
+  .cs-story-hero .d-flex.flex-wrap.gap-3.mb-4 {
+    max-width: 67%;
+  }
+
+  .cs-mobile-nav-item,
+  .cs-mobile-nav-report {
+    font-size: .62rem;
+  }
+
+  .cs-mobile-report-card {
+    margin: .5rem;
+    padding: .85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-mobile-nav-item,
+  .cs-mobile-nav-report,
+  .cs-dashboard-row,
+  .cs-admin-mobile-card {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .cs-navbar-drawer .offcanvas-body {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    padding: 0;
+    overflow: visible;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Editorial landing page: process and civic categories
    -------------------------------------------------------------------------- */
 .cs-story-hero h1,
@@ -1630,6 +2121,57 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0;
 }
 
+.cs-hero-response-card {
+  display: flex;
+  width: min(100%, 27rem);
+  align-items: center;
+  gap: .9rem;
+  position: relative;
+  z-index: 7;
+}
+
+.cs-hero-response-card .feature-icon {
+  flex: 0 0 48px;
+  margin: 0;
+}
+
+.cs-hero-response-card h2 {
+  font-size: 1rem;
+}
+
+.cs-hero-response-card p {
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.cs-photo-actions .btn {
+  min-height: 46px;
+  font-weight: 700;
+}
+
+.cs-photo-preview {
+  padding: 1rem;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-md);
+  background: var(--cs-bg-alt);
+}
+
+.cs-photo-preview .image-preview-box {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.cs-ai-report-preview {
+  padding: 1rem;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--cs-radius-md);
+  background: #eff6ff;
+}
+
 @media (min-width: 768px) and (max-width: 991.98px) {
   .cs-story-hero .col-lg-5 {
     width: 64%;
@@ -1915,4 +2457,212 @@ h1, h2, h3, h4, h5, h6 {
 @media (prefers-reduced-motion: reduce) {
   .cs-dashboard-row, .cs-card, .btn-cs-primary, .btn-cs-outline, .cs-nav-link { transition: none; }
   .cs-dashboard-row:hover, .cs-card:hover, .btn-cs-primary:hover, .btn-cs-outline:hover { transform: none; }
+}
+/* Mobile hero overrides follow the scroll-story rules so the pose stays visible. */
+@media (max-width: 575.98px) {
+  .cs-story-hero h1 {
+    max-width: 12ch;
+    font-size: clamp(1.9rem, 8.4vw, 2.55rem);
+  }
+
+  .cs-story-hero .col-lg-7 {
+    width: 100%;
+  }
+
+  .cs-story-avatar {
+    right: -1vw;
+    bottom: 0;
+    width: 39vw;
+    height: 42%;
+  }
+
+  .cs-hero-response-card {
+    width: min(60vw, 27rem);
+    align-items: flex-start;
+    gap: .55rem;
+    padding: .7rem !important;
+  }
+
+  .cs-hero-response-card .feature-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 1.1rem;
+  }
+
+  .cs-hero-response-card h2 {
+    font-size: .84rem;
+  }
+
+  .cs-hero-response-card p {
+    font-size: .74rem;
+    line-height: 1.35;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .cs-story-hero .col-lg-7 {
+    width: 62%;
+  }
+
+  .cs-story-hero .col-lg-5 {
+    display: none;
+  }
+}
+
+/* On-device layout preview controls sit alongside the main navigation. */
+.cs-preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cs-preview-toggle-desktop {
+  padding: .4rem .65rem;
+  border-radius: .65rem;
+  background: transparent;
+  color: #30415d;
+  font: 700 .8rem/1.2 Inter, sans-serif;
+}
+
+.cs-preview-toggle-mobile {
+  display: none;
+}
+
+.cs-preview-switch {
+  display: inline-flex;
+  width: 2.35rem;
+  height: 1.3rem;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: .13rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #e8edf4;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .14);
+  transition: background-color .18s ease, border-color .18s ease;
+}
+
+.cs-preview-switch > span {
+  display: block;
+  width: .95rem;
+  height: .95rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .28);
+  transition: transform .18s ease;
+}
+
+.cs-preview-toggle.is-active .cs-preview-switch,
+.cs-preview-switch.is-active {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.cs-preview-toggle.is-active .cs-preview-switch > span,
+.cs-preview-switch.is-active > span {
+  transform: translateX(1rem);
+}
+
+.cs-device-preview-overlay {
+  position: fixed;
+  z-index: 2200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, .68);
+  backdrop-filter: blur(8px);
+}
+
+.cs-device-preview-frame {
+  display: flex;
+  width: min(100%, 430px);
+  height: min(92vh, 920px);
+  min-height: 480px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 8px solid #151b25;
+  border-radius: 2rem;
+  background: #fff;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .42);
+}
+
+.cs-device-preview-toolbar {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .4rem .7rem .4rem 1rem;
+  background: #fff;
+  color: #1e293b;
+  font-size: .78rem;
+  font-weight: 750;
+}
+
+.cs-device-preview-close {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: .45rem;
+  padding: .25rem .5rem;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #1e293b;
+  font: inherit;
+}
+
+.cs-device-preview-close .cs-preview-switch {
+  width: 2rem;
+  height: 1.15rem;
+}
+
+.cs-device-preview-close .cs-preview-switch > span {
+  width: .83rem;
+  height: .83rem;
+}
+
+.cs-device-preview-close .cs-preview-switch.is-active > span {
+  transform: translateX(.8rem);
+}
+
+.cs-device-preview-frame iframe {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  border: 0;
+  background: #fff;
+}
+
+body.cs-preview-open {
+  overflow: hidden;
+}
+
+html.cs-preview-embedded .cs-preview-toggle {
+  display: none !important;
+}
+
+@media (max-width: 991.98px) {
+  .cs-preview-toggle-desktop {
+    display: none;
+  }
+
+  .cs-preview-toggle-mobile {
+    display: inline-flex;
+    min-height: 44px;
+    padding: .4rem .55rem;
+    border: 1px solid #d9e2ef;
+    border-radius: .7rem;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(20, 42, 90, .1);
+    color: #203d91;
+    font: 700 .72rem/1 Inter, sans-serif;
+  }
 }
