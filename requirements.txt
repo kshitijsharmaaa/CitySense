@@ -15,5 +15,9 @@ python-decouple==3.8          # Read settings from .env / environment
 # ── AI Integration ──────────────────────────────────────────────────────────
 google-genai==1.75.0          # Gemini multimodal API
 
+# Production web serving and static files
+gunicorn>=23.0,<24
+whitenoise>=6.8,<7
+
 # ── Development utilities ─────────────────────────────────────────────────────
 # (no Celery, Redis, WebSockets — see AGENTS.md)

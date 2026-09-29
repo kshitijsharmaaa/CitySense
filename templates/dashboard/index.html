@@ -76,7 +76,7 @@
             {% if issues %}
               <div class="list-group list-group-flush">
                 {% for issue in issues %}
-                  <a href="{% url 'issues:detail' issue.pk %}" class="list-group-item list-group-item-action p-3 report-row cs-dashboard-row" {% if issue.incident %}data-incident-id="{{ issue.incident.pk }}" data-incident-status="{{ issue.incident.status }}"{% endif %}>
+                  <a href="{% url 'issues:detail' issue.pk %}" class="list-group-item list-group-item-action p-3 report-row cs-dashboard-row d-none d-md-block" {% if issue.incident %}data-incident-id="{{ issue.incident.pk }}" data-incident-status="{{ issue.incident.status }}"{% endif %}>
                     <div class="d-flex w-100 justify-content-between align-items-center mb-1">
                       <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-dark text-white font-monospace">Report ID: {{ issue.issue_code }}</span>
@@ -94,6 +94,21 @@
                       {% if issue.incident %}
                         <span><i class="bi bi-diagram-3 me-1"></i>Incident ID: {{ issue.incident.incident_code }}</span>
                       {% endif %}
+                    </div>
+                  </a>
+                  <a href="{% url 'issues:detail' issue.pk %}" class="cs-mobile-report-card d-md-none report-row" {% if issue.incident %}data-incident-id="{{ issue.incident.pk }}" data-incident-status="{{ issue.incident.status }}"{% endif %}>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                      <span class="badge bg-dark text-white font-monospace">{{ issue.issue_code }}</span>
+                      {% if issue.incident %}{% include "components/status_badge.html" with status=issue.incident.status %}{% else %}{% include "components/status_badge.html" with status="REPORTED" %}{% endif %}
+                    </div>
+                    <h3 class="h6 fw-bold mb-2">{{ issue.title }}</h3>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      {% if issue.incident %}{% include "components/priority_badge.html" with priority=issue.incident.priority %}{% elif issue.ai_priority %}{% include "components/priority_badge.html" with priority=issue.ai_priority %}{% endif %}
+                      {% if issue.incident %}<span class="small text-muted-cs">{{ issue.incident.incident_code }}</span>{% endif %}
+                    </div>
+                    <div class="cs-mobile-report-meta">
+                      <span><strong>Department</strong>{% if issue.incident.department %}{{ issue.incident.department.name }}{% elif issue.ai_department %}Suggested: {{ issue.ai_department.name }}{% else %}Not assigned{% endif %}</span>
+                      <time datetime="{{ issue.created_at|date:'c' }}">{{ issue.created_at|date:"M j, Y" }}</time>
                     </div>
                   </a>
                 {% endfor %}

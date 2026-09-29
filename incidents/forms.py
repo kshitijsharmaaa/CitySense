@@ -3,6 +3,7 @@
 from django import forms
 
 from accounts.models import CitySenseUser
+from citysense.image_uploads import validate_city_image
 from issues.models import Department
 
 from .models import Incident, IncidentStatus
@@ -46,8 +47,13 @@ class IncidentReviewForm(forms.ModelForm):
 
     class Meta:
         model = Incident
-        fields = ('department', 'assigned_to', 'status', 'resolution_notes')
-        widgets = {'resolution_notes': forms.Textarea(attrs={'rows': 4})}
+        fields = ('department', 'assigned_to', 'status', 'resolution_notes', 'resolution_image')
+        widgets = {
+            'resolution_notes': forms.Textarea(attrs={'rows': 4}),
+            'resolution_image': forms.ClearableFileInput(attrs={
+                'accept': 'image/jpeg,image/png,image/gif,image/webp',
+            }),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,3 +71,9 @@ class IncidentReviewForm(forms.ModelForm):
             role=CitySenseUser.Role.ADMIN,
             is_active=True,
         ).order_by('name')
+
+    def clean_resolution_image(self):
+        uploaded = self.cleaned_data.get('resolution_image')
+        if not uploaded or uploaded == self.instance.resolution_image:
+            return uploaded
+        return validate_city_image(uploaded)

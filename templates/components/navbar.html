@@ -8,16 +8,32 @@
       <span>City<span style="color: var(--cs-accent);">Sense</span></span>
     </a>
 
-    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#citysenseNavbar" aria-controls="citysenseNavbar" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
+    <button type="button" class="cs-preview-toggle cs-preview-toggle-mobile" data-preview-toggle aria-pressed="false" aria-label="Switch to desktop preview">
+      <span class="cs-preview-switch" aria-hidden="true"><span></span></span>
+      <span class="cs-preview-label">Desktop</span>
     </button>
 
-    <div class="collapse navbar-collapse" id="citysenseNavbar">
+    <button class="navbar-toggler border-0 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#citysenseNavbar" aria-controls="citysenseNavbar" aria-label="Open navigation menu">
+      <span class="navbar-toggler-icon"></span><span class="visually-hidden">Menu</span>
+    </button>
+
+    <div class="navbar-collapse offcanvas-lg offcanvas-end cs-navbar-drawer" tabindex="-1" id="citysenseNavbar" aria-labelledby="citysenseNavbarTitle">
+      <div class="offcanvas-header d-lg-none">
+        <h2 class="offcanvas-title h5 mb-0" id="citysenseNavbarTitle">CitySense menu</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#citysenseNavbar" aria-label="Close navigation menu"></button>
+      </div>
+      <div class="offcanvas-body">
       <ul class="navbar-nav me-auto ms-lg-4 mb-2 mb-lg-0 gap-lg-1">
         <li class="nav-item">
           <a class="nav-link cs-nav-link" href="{% url 'home' %}">
             <i class="bi bi-house-door me-1"></i> Home
           </a>
+        </li>
+        <li class="nav-item">
+          <button type="button" class="nav-link cs-nav-link cs-preview-toggle cs-preview-toggle-desktop" data-preview-toggle aria-pressed="false" aria-label="Switch to desktop preview">
+            <span class="cs-preview-switch" aria-hidden="true"><span></span></span>
+            <span class="cs-preview-label">Mobile view</span>
+          </button>
         </li>
         {% if request.user.is_authenticated %}
           <li class="nav-item">
@@ -65,6 +81,7 @@
             <i class="bi bi-person-plus"></i> Register
           </a>
         {% endif %}
+      </div>
       </div>
     </div>
   </div>

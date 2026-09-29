@@ -29,18 +29,20 @@ An **Incident** is the underlying civic problem that administrators manage and r
 ### Phase 3–6 behavior
 
 - `accounts:register` creates a CITIZEN account only; self-selected roles are ignored.
-- `issues:create` is available to authenticated users and takes `title`, `description`, optional `image`, `latitude`, and `longitude`. The reporter is always the session user.
+- `issues:create` is available to authenticated users and takes title, description, optional image, latitude, and longitude. A photo can be captured with the browser camera or chosen from files. Photo-only drafting is available when Gemini returns a validated report draft; otherwise meaningful text is required. The reporter is always the session user.
+- `issues:analyze_photo` accepts an authenticated validated image and optional text as multipart form data. It returns a validated editable draft and does not save an Issue.
 - Each submitted Issue is compared with active Incidents created in the previous 30 days using deterministic category, location, text, and recency signals.
 - A concrete non-`Other` category match and a score of at least `0.60` are required to associate a report with an existing Incident. Nearby coordinates (within 0.5 km) and text similarity contribute to the explainable score; missing coordinates provide no proximity evidence.
-- If a qualifying match exists, the Issue is linked to that Incident. Otherwise, a new Incident is created with category `Other`, priority `MEDIUM`, status `REPORTED`, department `General`, and `report_count = 1` for administrator review.
+- If a qualifying match exists, the Issue is linked to that Incident without changing its canonical fields. Otherwise, a new Incident is seeded from the validated Issue AI category, priority, and department (or safe defaults when triage is unavailable), with status `REPORTED` and `report_count = 1`.
 - A new Incident gets an initial `REPORTED` status history record in the same database transaction. Matching an existing Incident does not change its status or create a status transition.
 - Aggregation recalculates report count, representative coordinates, and severity. Incident category, priority, department, assignment, and status remain administrator-controlled and are not overwritten by AI suggestions or aggregation.
 - An unexpected failure in incident intelligence falls back to a separate Incident within the existing transaction, avoiding a speculative merge and keeping the Issue submission available.
 - Citizens can access their own reports and an Incident only when it is associated with one of their reports. Incident status and classification are read-only in citizen routes.
 - Issue images are limited to JPEG, PNG, GIF, or WebP and 5 MB.
-- Before the database transaction begins, `ai_engine` analyzes the title, description, and optional image. Its validated recommendations are saved to the Issue's existing AI fields.
-- AI recommendations never set Incident category, priority, or department. The Phase 3 Incident defaults remain `Other`, `MEDIUM`, `General`, and `REPORTED` for administrator review.
+- Before the database transaction begins, `ai_engine` analyzes the title, description, and optional image. Its validated recommendations are saved to the Issue's existing AI fields. For photo-assisted drafts, the same multimodal response may include a validated generated title and description; the citizen's manually supplied fields are preserved, and generated text fills only missing fields.
+- Validated AI category, priority, and department seed only a new Incident. Administrators remain authoritative and duplicate reports do not overwrite existing Incident canonical fields.
 - Missing credentials, timeout/provider errors, malformed JSON, or invalid values use the deterministic fallback classifier. Report submission and Incident creation continue.
+- The deterministic fallback is text-based. If a photo-only draft cannot be generated, CitySense asks the citizen to enter report text manually instead of pretending fallback triage understood the image.
 
 ### Phase 6 administrator incident workflow
 
@@ -55,9 +57,9 @@ Both routes require an authenticated user whose CitySense role is `ADMIN`. Anony
 
 The dashboard context contains `incidents` (current page of Incidents with department/assignee selected), `page_obj`, and `filters` (bound `IncidentFilterForm`). Supported GET filters are `status`, `priority`, `category`, and `department`; invalid filters are not applied. Each Incident row exposes code, category, priority, department, status, report count, severity, created time, and updated time.
 
-The review context contains `incident`, `issues`, `status_history`, and `form`. Linked Issues include reporter, AI-suggested department, category, priority, summary, confidence, raw description, and report location. The form edits `department`, existing optional `assigned_to` (active ADMIN users only), `status`, and `resolution_notes`; an optional `status_comment` is saved with a status transition. Category, priority, report count, severity, and Issue associations are read-only in this workflow.
+The review context contains `incident`, `issues`, `status_history`, and `form`. Linked Issues include reporter, AI-suggested department, category, priority, summary, confidence, raw description, and report location. The form edits `department`, existing optional `assigned_to` (active ADMIN users only), `status`, `resolution_notes`, and an optional validated `resolution_image`; an optional `status_comment` is saved with a status transition. Category, priority, report count, severity, and Issue associations are read-only in this workflow.
 
-Every actual status change is saved atomically with an `IncidentStatusHistory` row containing old/new status, timestamp, comment, and the acting admin. Re-posting the current status does not create a false transition. All existing status choices are allowed; transitioning to `RESOLVED` sets `resolved_at`, and moving an incident out of `RESOLVED` clears that current-state timestamp while preserving resolution notes. Invalid form submissions save nothing. Assignment-only changes do not create status-history entries because the existing history model audits status transitions only.
+Every actual status change is saved atomically with an `IncidentStatusHistory` row containing old/new status, timestamp, comment, and the acting admin. Re-posting the current status does not create a false transition. All existing status choices are allowed; transitioning to `RESOLVED` sets `resolved_at`, and moving an incident out of `RESOLVED` clears that current-state timestamp while preserving resolution notes and photo. Invalid form submissions save nothing. Assignment-only changes do not create status-history entries because the existing history model audits status transitions only. Only the admin-protected review route accepts resolution-photo changes; citizen incident details show the photo and appreciation while the incident is currently resolved.
 
 The backend provides minimal app-owned Django templates at `incidents/admin_dashboard.html` and `incidents/admin_detail.html`; existing citizen templates and static assets are unchanged. The citizen Incident context continues to expose `incident.status_history`, including old/new values, timestamp, actor, and comment, for later audit-timeline presentation.
 
@@ -69,8 +71,8 @@ The backend provides minimal app-owned Django templates at `incidents/admin_dash
 |---|---|---|
 | `issue_code` | string | Auto-generated. Format: `CIV-1001` |
 | `reported_by` | FK → User | Nullable |
-| `title` | string | Citizen-supplied title |
-| `description` | text | Citizen description |
+| `title` | string | Citizen-supplied or validated AI-drafted title; editable before submission |
+| `description` | text | Citizen-supplied or validated AI-drafted description; editable before submission |
 | `image` | image | Optional upload |
 | `latitude` | decimal | Optional |
 | `longitude` | decimal | Optional |
@@ -102,6 +104,7 @@ The backend provides minimal app-owned Django templates at `incidents/admin_dash
 | `report_count` | int | Count of linked Issues |
 | `resolution_notes` | text | |
 | `resolved_at` | datetime | Set when status = RESOLVED |
+| `resolution_image` | image | Optional admin-uploaded photo of completed work |
 | `created_at` | datetime | |
 | `updated_at` | datetime | |
 

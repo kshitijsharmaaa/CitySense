@@ -3,7 +3,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta id="cs-viewport" name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function () {
+      try {
+        var embeddedPreview = window.self !== window.top;
+        if (embeddedPreview) {
+          document.documentElement.classList.add('cs-preview-embedded');
+        } else if (sessionStorage.getItem('citysense-layout-preview') === 'desktop') {
+          document.documentElement.classList.add('cs-desktop-preview');
+          document.getElementById('cs-viewport').setAttribute('content', 'width=1280, initial-scale=0.3');
+        }
+      } catch (error) {
+        // Keep the normal responsive viewport when browser storage is unavailable.
+      }
+    })();
+  </script>
   <meta name="description" content="Report local problems, follow their progress, and see how your community is responding.">
   <title>{% block title %}CitySense | Report a Local Problem{% endblock %}</title>
 
@@ -23,7 +38,7 @@
 
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body{% if request.user.is_authenticated and request.user.is_citizen %} class="has-mobile-citizen-nav"{% endif %}>
 
   <!-- Navigation Bar -->
   {% include "components/navbar.html" %}
@@ -92,6 +107,10 @@
       </div>
     </div>
   </footer>
+
+  {% if request.user.is_authenticated and request.user.is_citizen %}
+    {% include "components/mobile_citizen_nav.html" %}
+  {% endif %}
 
   <!-- Bootstrap 5 JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

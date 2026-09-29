@@ -103,14 +103,18 @@
             {% include "components/progress_tracker.html" %}
             {% if incident.assigned_to %}<p class="small text-muted-cs"><strong>Assigned staff member:</strong> {{ incident.assigned_to }}</p>{% endif %}
 
-            <!-- Resolution Notes if Resolved -->
-            {% if incident.status == "RESOLVED" or incident.resolution_notes %}
-              <div class="mt-4 p-3 bg-success bg-opacity-10 border border-success-subtle rounded">
-                <h3 class="h6 fw-bold text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i> Resolution update</h3>
-                <p class="small text-dark mb-1">{{ incident.resolution_notes|default:"No resolution update has been added yet." }}</p>
-                {% if incident.resolved_at %}
-                  <span class="small text-muted">Resolved on {{ incident.resolved_at|date:"M d, Y at H:i" }}</span>
-                {% endif %}
+            {% if incident.status == "RESOLVED" %}
+              <div class="mt-4 p-3 bg-success bg-opacity-10 border border-success-subtle rounded" role="status">
+                <h3 class="h6 fw-bold text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i> Resolved</h3>
+                <p class="small text-dark mb-0">Your report helped improve this area. Thank you for reporting this issue. Your contribution helped the community move one step closer to a cleaner and safer India.</p>
+              </div>
+            {% endif %}
+            {% if incident.resolution_notes or incident.resolution_image %}
+              <div class="mt-3 p-3 bg-light border rounded">
+                <h3 class="h6 fw-bold text-dark mb-2">{% if incident.status == "RESOLVED" %}Resolution details{% else %}Previous resolution record{% endif %}</h3>
+                {% if incident.resolution_notes %}<p class="small text-dark mb-2" style="white-space:pre-line;">{{ incident.resolution_notes }}</p>{% endif %}
+                {% if incident.resolution_image %}<img src="{{ incident.resolution_image.url }}" alt="Photo showing the completed civic repair" class="img-fluid rounded border mt-2" loading="lazy">{% endif %}
+                {% if incident.status == "RESOLVED" and incident.resolved_at %}<span class="small text-muted d-block mt-2">Resolved on {{ incident.resolved_at|date:"M d, Y at H:i" }}</span>{% endif %}
               </div>
             {% endif %}
           </div>

@@ -2,71 +2,111 @@
 
 > See the problem. Understand the issue. Drive the action.
 
-CitySense is an AI-assisted civic issue intelligence and resolution
-platform.
+CitySense is an AI-assisted civic issue intelligence and resolution platform.
 
 ## Problem
 
-Civic issues are often reported as fragmented and unstructured
-complaints. Multiple reports may also represent the same underlying
-problem.
+Civic issues are often reported as fragmented and unstructured complaints.
+Multiple reports may also represent the same underlying problem.
 
 ## Solution
 
-CitySense transforms citizen descriptions, images and locations into
-structured civic incidents using AI and location-based intelligence.
+CitySense transforms citizen descriptions, images, and locations into
+structured civic incidents using AI and deterministic location/text
+intelligence.
 
-## Core Workflow
+## Core workflow
 
-Citizen Report
-→ AI Triage Recommendation
-→ Duplicate Detection
-→ Incident Aggregation
-→ Prioritization
-→ Department Assignment
-→ Resolution
-→ Citizen Tracking
+Citizen report → AI triage recommendation → duplicate detection → incident
+aggregation → prioritization → department assignment → resolution → citizen
+tracking.
 
-## Planned Features
+## Features
 
-- Citizen issue reporting
-- AI-assisted triage
-- Duplicate detection
-- Incident aggregation
-- Priority assessment
-- Department routing
-- Map visualization
-- Transparent status tracking
-- Admin dashboard
+- Citizen registration, login, and private report lists
+- Issue reporting with image upload and location capture
+- AI Smart Triage with output validation and deterministic fallback
+- Deterministic duplicate detection and incident aggregation
+- Incident severity calculation
+- Admin incident review, department/operator assignment, status history,
+  resolution, and reopen workflow
+- Citizen progress tracking and map views
+- Responsive Django Templates, Bootstrap 5, and vanilla JavaScript UI
 
-## Tech Stack
+## Tech stack
 
-- Python
-- Django
-- PostgreSQL
-- Django Templates
-- Bootstrap 5
-- Vanilla JavaScript
-- Leaflet
-- Chart.js
-- Multimodal AI API
+- Python and Django
+- PostgreSQL in production; SQLite development fallback
+- Django Templates, Bootstrap 5, and vanilla JavaScript
+- Leaflet maps
+- Gemini multimodal API integration
 
-## Project Status
+## Project status
 
-Phases 1–3 are complete. Phase 4 implements AI Smart Triage: category,
-priority, department, summary, and confidence are stored as recommendations
-on each Issue. Administrators retain final authority over Incident
-classification and department. If the provider is unavailable or returns
-invalid output, a deterministic keyword fallback keeps report submission
-working.
+AI category, priority, department, summary, and confidence are stored as
+recommendations on each Issue. Validated recommendations seed only newly
+created Incidents; administrators control canonical Incident values, and
+duplicate reports do not overwrite existing Incident fields. If the provider
+is unavailable or returns invalid output, deterministic keyword fallback
+keeps report submission working. Gemini configuration is server-side through
+`AI_API_KEY`, `AI_MODEL`, and `AI_TIMEOUT_SECONDS`.
 
-Duplicate detection, incident aggregation, severity scoring, admin workflow,
-maps, analytics, and deployment are not implemented yet.
+## Deploy to Render
 
-The Gemini provider uses the server-side `AI_API_KEY`, `AI_MODEL`, and
-`AI_TIMEOUT_SECONDS` settings. Provider integration is isolated in
-`ai_engine`; credentials are never sent to browser code.
+CitySense runs as a Python Web Service backed by Render PostgreSQL. WhiteNoise
+serves collected Django static files when `DEBUG=False`.
 
-## Team
+### Render setup
 
-Two-person team.
+1. Create a Render PostgreSQL database in the same region as the web service
+   (choose the Free plan for a short demo).
+2. Create a public Python Web Service from the integrated CitySense branch in
+   this repository (choose the Free plan for a short demo).
+3. Set the build command to `bash build.sh` and the start command to:
+
+   ```sh
+   gunicorn citysense.wsgi:application --bind 0.0.0.0:$PORT
+   ```
+
+4. Set the health check path to `/health/`.
+5. Add the environment variables below before the first deploy. Set
+   `DATABASE_URL` to the database's **internal** connection URL. Set
+   `ALLOWED_HOSTS` to the exact generated service host (for example,
+   `citysense-example.onrender.com`) and `CSRF_TRUSTED_ORIGINS` to its HTTPS
+   origin (for example, `https://citysense-example.onrender.com`).
+6. Deploy. `build.sh` installs dependencies, collects static files, applies
+   migrations, then runs `ensure_demo_admin` to create or update the configured
+   demo administrator.
+7. Verify the public service URL and `https://<service-host>/health/`.
+   Citizens can register normally through the deployed application.
+
+### Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `SECRET_KEY` | Yes in production | Generate a unique secret in Render; Django rejects an empty production value. |
+| `DEBUG` | Yes | Set to `False`. |
+| `ALLOWED_HOSTS` | Yes | Comma-separated exact Render hostnames. |
+| `DATABASE_URL` | Yes | Render PostgreSQL internal connection URL. |
+| `CSRF_TRUSTED_ORIGINS` | Yes | Comma-separated HTTPS origins, including scheme. |
+| `AI_API_KEY` | Optional | Gemini credential; empty/missing uses deterministic fallback. |
+| `AI_MODEL` | Optional | Gemini model; defaults to the project's configured default. |
+| `AI_TIMEOUT_SECONDS` | Optional | Provider timeout; defaults to the project's configured default. |
+| `DEMO_ADMIN_EMAIL` | Yes | Email of the one account managed as demo admin. |
+| `DEMO_ADMIN_NAME` | Yes | Display name for the demo admin. |
+| `DEMO_ADMIN_PASSWORD` | Yes | Strong admin password; never committed or printed by the command. |
+
+Keep secret values in Render's Environment settings, not in source control.
+`.env.example` lists the variables for local reference. Local development
+continues to use the existing SQLite fallback when `DATABASE_URL` is empty.
+
+### Render commands and free-tier notes
+
+- Build command: `bash build.sh`
+- Start command: `gunicorn citysense.wsgi:application --bind 0.0.0.0:$PORT`
+- Health check: `/health/`
+- Render Free web services use an ephemeral filesystem, so uploaded media is
+  lost on restart, redeploy, or spin-down. Free web services also spin down
+  after inactivity. Free Render PostgreSQL currently expires after 30 days;
+  use persistent storage for data that must outlive a demo. See Render's
+  [Free instance limitations](https://render.com/docs/free).

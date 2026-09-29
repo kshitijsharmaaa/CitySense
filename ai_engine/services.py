@@ -6,13 +6,13 @@ from django.conf import settings
 
 from .fallback import classify_fallback
 from .providers import generate_with_gemini
-from .validators import validate_triage_result
+from .validators import validate_report_draft, validate_triage_result
 
 
 logger = logging.getLogger(__name__)
 
 
-def triage_issue(*, title, description, image=None):
+def triage_issue(*, title, description, image=None, generate_report=False):
     """Return validated AI recommendations, or deterministic fallback values.
 
     Provider calls happen before issue creation starts its database transaction.
@@ -21,6 +21,9 @@ def triage_issue(*, title, description, image=None):
     """
     fallback = classify_fallback(title=title, description=description)
     if not settings.AI_API_KEY:
+        if generate_report:
+            logger.warning("Image-assisted report drafting skipped: AI_API_KEY is not configured.")
+            fallback["_draft_error"] = "missing_api_key"
         return fallback
 
     try:
@@ -28,8 +31,31 @@ def triage_issue(*, title, description, image=None):
             title=title,
             description=description,
             image=image,
+            generate_report=generate_report,
         )
-        return validate_triage_result(raw_response)
+        return validate_report_draft(raw_response) if generate_report else validate_triage_result(raw_response)
     except Exception as exc:  # Provider and validation failures must not block reports.
-        logger.warning("AI triage failed; using deterministic fallback (%s).", type(exc).__name__)
+        # Keep diagnostics useful without ever logging report text, image bytes,
+        # credentials, or provider request payloads.
+        safe_detail = str(exc).replace(settings.AI_API_KEY, "[redacted]")
+        for report_text in (title, description):
+            if report_text:
+                safe_detail = safe_detail.replace(report_text, "[report text redacted]")
+        safe_detail = safe_detail[:400]
+        logger.warning(
+            "AI triage failed; using deterministic fallback "
+            "(exception=%s, detail=%s).",
+            type(exc).__name__, safe_detail,
+        )
+        if generate_report:
+            if getattr(exc, "code", None) == 429:
+                error_detail = safe_detail.lower()
+                if "free_tier" in error_detail:
+                    fallback["_draft_error"] = "free_tier_quota_exhausted"
+                elif "quota exceeded" in error_detail:
+                    fallback["_draft_error"] = "quota_exhausted"
+                else:
+                    fallback["_draft_error"] = "rate_limited"
+            else:
+                fallback["_draft_error"] = "provider_unavailable"
         return fallback

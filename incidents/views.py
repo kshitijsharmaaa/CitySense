@@ -82,7 +82,7 @@ def admin_detail(request, pk):
         pk=pk,
     )
 
-    form = IncidentReviewForm(request.POST or None, instance=incident)
+    form = IncidentReviewForm(request.POST or None, request.FILES or None, instance=incident)
     if request.method == 'POST' and form.is_valid():
         update_incident_review(
             incident_id=incident.pk,

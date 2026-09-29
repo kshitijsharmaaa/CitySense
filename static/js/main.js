@@ -6,6 +6,8 @@
 document.addEventListener('DOMContentLoaded', function () {
   console.log('CitySense UI Engine initialized successfully.');
 
+  initializeLayoutPreviewToggle();
+
   // Initialize Bootstrap Tooltips if present
   var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -26,6 +28,107 @@ document.addEventListener('DOMContentLoaded', function () {
   initializeScrollStories();
   initializeProcessReveal();
 });
+
+/** Let mobile demo viewers switch between responsive and desktop-width layouts. */
+function initializeLayoutPreviewToggle() {
+  var buttons = document.querySelectorAll('[data-preview-toggle]');
+  var viewport = document.getElementById('cs-viewport');
+  if (!buttons.length || !viewport) return;
+
+  var storageKey = 'citysense-layout-preview';
+  var isDesktopPreview = document.documentElement.classList.contains('cs-desktop-preview');
+  var isEmbeddedPreview = false;
+  try {
+    isEmbeddedPreview = window.self !== window.top;
+  } catch (error) {
+    isEmbeddedPreview = true;
+  }
+  if (isEmbeddedPreview) document.documentElement.classList.add('cs-preview-embedded');
+
+  function renderButton() {
+    buttons.forEach(function (button) {
+      var mobileControl = button.classList.contains('cs-preview-toggle-mobile');
+      var label = mobileControl ? (isDesktopPreview ? 'Mobile' : 'Desktop') : 'Mobile view';
+      button.setAttribute('aria-pressed', String(isDesktopPreview));
+      button.setAttribute('aria-label', isDesktopPreview ? 'Switch to mobile view' : 'Switch to desktop view');
+      button.classList.toggle('is-active', isDesktopPreview);
+      var labelNode = button.querySelector('.cs-preview-label');
+      if (labelNode) labelNode.textContent = label;
+    });
+  }
+
+  renderButton();
+  buttons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (window.innerWidth >= 992 && !isEmbeddedPreview) {
+        openDesktopMobilePreview();
+        buttons.forEach(function (control) {
+          control.setAttribute('aria-pressed', 'true');
+          control.classList.add('is-active');
+        });
+        return;
+      }
+
+      isDesktopPreview = !isDesktopPreview;
+      document.documentElement.classList.toggle('cs-desktop-preview', isDesktopPreview);
+      viewport.setAttribute('content', isDesktopPreview
+        ? 'width=1280, initial-scale=0.3'
+        : 'width=device-width, initial-scale=1.0');
+      try {
+        sessionStorage.setItem(storageKey, isDesktopPreview ? 'desktop' : 'mobile');
+      } catch (error) {
+        // The switch still works for this page if storage is unavailable.
+      }
+      renderButton();
+      window.scrollTo(0, 0);
+    });
+  });
+
+  function openDesktopMobilePreview() {
+    if (document.querySelector('.cs-device-preview-overlay')) return;
+
+    var previewUrl = new URL(window.location.href);
+    previewUrl.searchParams.set('cs_preview', 'mobile');
+    var overlay = document.createElement('div');
+    overlay.className = 'cs-device-preview-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Mobile layout preview');
+    overlay.innerHTML = '<section class="cs-device-preview-frame">' +
+      '<header class="cs-device-preview-toolbar"><span><i class="bi bi-phone me-2" aria-hidden="true"></i>Mobile preview</span>' +
+      '<button type="button" class="cs-device-preview-close"><span class="cs-preview-switch is-active" aria-hidden="true"><span></span></span><span>Desktop view</span></button></header>' +
+      '<iframe title="CitySense mobile layout" loading="eager"></iframe></section>';
+
+    var iframe = overlay.querySelector('iframe');
+    iframe.src = previewUrl.toString();
+    document.body.appendChild(overlay);
+    document.body.classList.add('cs-preview-open');
+
+    function closePreview() {
+      overlay.remove();
+      document.body.classList.remove('cs-preview-open');
+      buttons.forEach(function (control) {
+        control.setAttribute('aria-pressed', 'false');
+        control.classList.remove('is-active');
+      });
+      var visibleControl = Array.prototype.find.call(buttons, function (control) {
+        return control.offsetParent !== null;
+      });
+      if (visibleControl) visibleControl.focus();
+      document.removeEventListener('keydown', onKeyDown);
+    }
+    function onKeyDown(event) {
+      if (event.key === 'Escape') closePreview();
+    }
+
+    overlay.querySelector('.cs-device-preview-close').addEventListener('click', closePreview);
+    overlay.addEventListener('click', function (event) {
+      if (event.target === overlay) closePreview();
+    });
+    document.addEventListener('keydown', onKeyDown);
+    overlay.querySelector('.cs-device-preview-close').focus();
+  }
+}
 
 /** Reveal the editorial process sequence once it enters the viewport. */
 function initializeProcessReveal() {
@@ -99,11 +202,11 @@ function initializeScrollStories() {
       var mobile = stageWidth < 768;
       var compact = stageWidth < 992;
       var heroHeight = Math.min(
-        stageHeight * (mobile ? 0.46 : compact ? 0.62 : 0.8),
-        stageWidth * (mobile ? 0.68 : compact ? 0.82 : 1.0)
+        stageHeight * (mobile ? 0.38 : compact ? 0.46 : 0.8),
+        stageWidth * (mobile ? 0.58 : compact ? 0.68 : 1.0)
       );
       var heroWidth = heroHeight * (2 / 3);
-      var heroCenterX = stageWidth * (compact ? 0.77 : 0.78);
+      var heroCenterX = stageWidth * (mobile ? 0.8 : compact ? 0.77 : 0.78);
       var heroLeft = heroCenterX - heroWidth / 2;
       var heroTop = stageHeight - heroHeight - stageHeight * 0.02;
 

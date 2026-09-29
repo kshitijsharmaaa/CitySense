@@ -17,6 +17,7 @@ def update_incident_review(*, incident_id, cleaned_data, changed_by):
     incident.assigned_to = cleaned_data['assigned_to']
     incident.status = new_status
     incident.resolution_notes = cleaned_data['resolution_notes']
+    incident.resolution_image = cleaned_data['resolution_image']
 
     if new_status == IncidentStatus.RESOLVED:
         if old_status != IncidentStatus.RESOLVED or incident.resolved_at is None:
@@ -27,7 +28,7 @@ def update_incident_review(*, incident_id, cleaned_data, changed_by):
         incident.resolved_at = None
 
     incident.save(update_fields=(
-        'department', 'assigned_to', 'status', 'resolution_notes',
+        'department', 'assigned_to', 'status', 'resolution_notes', 'resolution_image',
         'resolved_at', 'updated_at',
     ))
 

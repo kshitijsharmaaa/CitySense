@@ -12,15 +12,23 @@ class TriageValidationError(ValueError):
 
 
 EXPECTED_KEYS = {"category", "priority", "department", "summary", "confidence"}
+REPORT_DRAFT_KEYS = {"generated_title", "generated_description"}
 
 
-def validate_triage_result(candidate):
-    """Parse JSON if needed and return a strict, normalized triage structure."""
+def _parse_candidate(candidate):
     if isinstance(candidate, str):
         try:
             candidate = json.loads(candidate)
         except (json.JSONDecodeError, TypeError) as exc:
             raise TriageValidationError("AI response is not valid JSON.") from exc
+    if not isinstance(candidate, Mapping):
+        raise TriageValidationError("AI response has an invalid structure.")
+    return candidate
+
+
+def validate_triage_result(candidate):
+    """Parse JSON if needed and return a strict, normalized triage structure."""
+    candidate = _parse_candidate(candidate)
 
     if not isinstance(candidate, Mapping) or set(candidate) != EXPECTED_KEYS:
         raise TriageValidationError("AI response has an invalid structure.")
@@ -54,3 +62,21 @@ def validate_triage_result(candidate):
         "summary": summary.strip(),
         "confidence": float(confidence),
     }
+
+
+def validate_report_draft(candidate):
+    """Validate triage plus an editable, citizen-facing title and description."""
+    candidate = _parse_candidate(candidate)
+    if set(candidate) != EXPECTED_KEYS | REPORT_DRAFT_KEYS:
+        raise TriageValidationError("AI report draft has an invalid structure.")
+
+    validated = validate_triage_result({key: candidate[key] for key in EXPECTED_KEYS})
+    title = candidate["generated_title"]
+    description = candidate["generated_description"]
+    if not isinstance(title, str) or not title.strip() or len(title.strip()) > 255:
+        raise TriageValidationError("AI response contains an invalid generated title.")
+    if not isinstance(description, str) or not description.strip() or len(description.strip()) > 2000:
+        raise TriageValidationError("AI response contains an invalid generated description.")
+    validated["generated_title"] = title.strip()
+    validated["generated_description"] = description.strip()
+    return validated
