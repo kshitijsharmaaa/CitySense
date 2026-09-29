@@ -24,9 +24,30 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   initializeScrollStories();
+  initializeProcessReveal();
 });
 
-/** Scrub the landing-page illustration directly from the story's scroll position. */
+/** Reveal the editorial process sequence once it enters the viewport. */
+function initializeProcessReveal() {
+  var processList = document.querySelector('[data-process-list]');
+  if (!processList) return;
+
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (reducedMotion.matches || !('IntersectionObserver' in window)) {
+    processList.classList.add('is-visible');
+    return;
+  }
+
+  processList.classList.add('is-observe');
+  var observer = new IntersectionObserver(function (entries) {
+    if (!entries.some(function (entry) { return entry.isIntersecting; })) return;
+    processList.classList.add('is-visible');
+    observer.unobserve(processList);
+  }, { threshold: 0.12 });
+  observer.observe(processList);
+}
+
+/** Scrub the complete hero-to-road story directly from the page scroll position. */
 function initializeScrollStories() {
   var stories = document.querySelectorAll('[data-scroll-story]');
   if (!stories.length) return;
@@ -44,7 +65,12 @@ function initializeScrollStories() {
     story.dataset.scrollStoryInitialized = 'true';
 
     var storySection = story.closest('.cs-scroll-story');
-    var sticky = story.querySelector('.cs-story-sticky');
+    var stage = story.querySelector('.cs-story-stage');
+    var hero = story.querySelector('[data-story-hero-layer]');
+    var road = story.querySelector('[data-story-road]');
+    var roadArt = story.querySelector('[data-story-road-art]');
+    var avatar = story.querySelector('[data-story-avatar]');
+    var heroPoses = story.querySelectorAll('[data-hero-pose]');
     var worker = story.querySelector('[data-story-worker]');
     var workerPoses = story.querySelectorAll('[data-worker-pose]');
     var pothole = story.querySelector('[data-story-pothole]');
@@ -52,10 +78,8 @@ function initializeScrollStories() {
     var message = story.querySelector('[data-story-message]');
     var caption = story.querySelector('[data-story-caption]');
     var status = story.querySelector('[data-story-status]');
-    var steps = Array.prototype.slice.call(story.querySelectorAll('[data-story-step]'));
     var framePending = false;
     var lastCaption = '';
-    var lastStep = -1;
 
     function renderStory() {
       framePending = false;
@@ -66,25 +90,103 @@ function initializeScrollStories() {
       var progress = 1;
       if (!reducedMotion.matches) {
         var storyTop = window.scrollY + story.getBoundingClientRect().top;
-        var scrollRange = Math.max(1, story.offsetHeight - sticky.offsetHeight);
+        var scrollRange = Math.max(1, story.offsetHeight - stage.offsetHeight);
         progress = clamp((window.scrollY - storyTop) / scrollRange, 0, 1);
       }
 
-      // The 3D turnaround character walks into the scene from 20–40% of the
-      // scroll track, then changes pose for repair and the finished-road state.
-      var walkProgress = smooth((progress - 0.2) / 0.2);
-      var workerX = lerp(-350, 360, walkProgress);
-      if (progress > 0.86) {
-        workerX = lerp(360, 330, smooth((progress - 0.86) / 0.12));
+      var stageWidth = stage.clientWidth;
+      var stageHeight = stage.clientHeight;
+      var mobile = stageWidth < 768;
+      var compact = stageWidth < 992;
+      var heroHeight = Math.min(
+        stageHeight * (mobile ? 0.46 : compact ? 0.62 : 0.8),
+        stageWidth * (mobile ? 0.68 : compact ? 0.82 : 1.0)
+      );
+      var heroWidth = heroHeight * (2 / 3);
+      var heroCenterX = stageWidth * (compact ? 0.77 : 0.78);
+      var heroLeft = heroCenterX - heroWidth / 2;
+      var heroTop = stageHeight - heroHeight - stageHeight * 0.02;
+
+      // The road art retains its original 1000 × 560 composition. Its worker
+      // landing point uses those same SVG coordinates at every viewport size.
+      var roadScale = stageWidth / 1000;
+      var roadHeight = roadScale * 560;
+      var roadTop = stageHeight - roadHeight;
+      var landingScale = mobile ? 1.1 : 1;
+      var repairSceneScale = landingScale * 0.7;
+      var repairScaleProgress = smooth((progress - 0.55) / 0.14);
+      var workerScale = lerp(landingScale, repairSceneScale, repairScaleProgress);
+      var landingWidth = 320 * roadScale * landingScale;
+      var landingHeight = 480 * roadScale * landingScale;
+      var landingLeft = (520 * roadScale) - landingWidth / 2;
+      var landingTop = roadTop + (58 + 480 - 480 * landingScale) * roadScale;
+
+      // 0.20–0.30: prepare. Crossed arms give way to the referenced jump pose.
+      var prepare = smooth((progress - 0.2) / 0.1);
+      var crossedOpacity = 1 - smooth((progress - 0.27) / 0.06);
+      var jumpPoseOpacity = smooth((progress - 0.27) / 0.06);
+      heroPoses.forEach(function (pose) {
+        pose.style.opacity = pose.dataset.heroPose === 'jump'
+          ? String(jumpPoseOpacity)
+          : String(crossedOpacity);
+      });
+
+      var avatarLeft = heroLeft;
+      var avatarTop = heroTop + prepare * 16;
+      var avatarWidth = heroWidth;
+      var avatarHeight = heroHeight * (1 - prepare * 0.035);
+
+      // 0.30–0.45: fly diagonally toward the road; 0.45–0.55: land as the
+      // existing pothole scene moves into place behind the same character.
+      if (progress >= 0.3 && progress < 0.45) {
+        var jumpProgress = smooth((progress - 0.3) / 0.15);
+        avatarLeft = lerp(heroLeft, landingLeft, jumpProgress);
+        avatarTop = lerp(heroTop + 16, stageHeight * 0.07, jumpProgress);
+        avatarWidth = lerp(heroWidth, landingWidth, jumpProgress);
+        avatarHeight = lerp(heroHeight, landingHeight, jumpProgress);
+      } else if (progress >= 0.45) {
+        var landingProgress = smooth((progress - 0.45) / 0.1);
+        avatarLeft = landingLeft;
+        avatarWidth = landingWidth;
+        avatarHeight = landingHeight;
+        avatarTop = lerp(stageHeight * 0.07, landingTop, landingProgress);
       }
 
-      var repairPose = smooth((progress - 0.47) / 0.12) * (1 - smooth((progress - 0.78) / 0.08));
-      var standingPose = smooth((progress - 0.78) / 0.08);
+      var jumpFade = 1 - smooth((progress - 0.5) / 0.05);
+      avatar.style.left = avatarLeft.toFixed(2) + 'px';
+      avatar.style.top = avatarTop.toFixed(2) + 'px';
+      avatar.style.width = avatarWidth.toFixed(2) + 'px';
+      avatar.style.height = avatarHeight.toFixed(2) + 'px';
+      avatar.style.opacity = String(Math.max(crossedOpacity, jumpPoseOpacity) * jumpFade);
+
+      var heroProgress = smooth((progress - 0.44) / 0.11);
+      hero.style.opacity = String(1 - heroProgress);
+      hero.style.transform = 'translateY(' + (-24 * heroProgress).toFixed(2) + 'px)';
+      var roadProgressIn = smooth((progress - 0.44) / 0.11);
+      road.style.opacity = String(roadProgressIn);
+      roadArt.style.transform = 'scale(' + (1.08 - roadProgressIn * 0.08).toFixed(3) + ')';
+
+      var landingBlend = smooth((progress - 0.51) / 0.04);
+      worker.style.opacity = String(landingBlend);
+      var workerX = 360;
+      worker.setAttribute(
+        'transform',
+        'translate(' + workerX + ' 58) translate(160 480) scale(' + workerScale + ') translate(-160 -480)'
+      );
+
+      // The road-repair timeline is the existing pothole/patch behavior mapped
+      // into the final 45% of this single continuous scroll range.
+      var roadProgress = clamp((progress - 0.55) / 0.45, 0, 1);
+      var repairPose = smooth((roadProgress - 0.22) / 0.12) * (1 - smooth((roadProgress - 0.78) / 0.1));
+      var standingPose = smooth((roadProgress - 0.84) / 0.12);
       var walkPose = clamp(1 - repairPose - standingPose, 0, 1);
-      var repairStroke = progress >= 0.55 && progress <= 0.82
-        ? Math.sin(((progress - 0.55) / 0.27) * Math.PI * 4) * 3
+      var repairStroke = roadProgress >= 0.22 && roadProgress <= 0.84
+        ? Math.sin(((roadProgress - 0.22) / 0.62) * Math.PI * 4) * 3
         : 0;
-      worker.setAttribute('transform', 'translate(' + workerX.toFixed(2) + ' ' + (58 + repairStroke).toFixed(2) + ')');
+      worker.setAttribute(
+        'transform',
+        'translate(' + workerX + ' ' + (58 + repairStroke).toFixed(2) + ') translate(160 480) scale(' + workerScale + ') translate(-160 -480)'
+      );
       workerPoses.forEach(function (pose) {
         var opacity = pose.dataset.workerPose === 'repair'
           ? repairPose
@@ -94,9 +196,7 @@ function initializeScrollStories() {
         pose.setAttribute('opacity', opacity.toFixed(3));
       });
 
-      // Asphalt patch opacity and crater scale are both functions of scroll;
-      // there is no timer or independent animation timeline.
-      var repair = smooth((progress - 0.55) / 0.31);
+      var repair = smooth((roadProgress - 0.22) / 0.67);
       var craterScale = 1 - repair * 0.985;
       pothole.setAttribute(
         'transform',
@@ -105,36 +205,25 @@ function initializeScrollStories() {
       pothole.style.opacity = String(1 - repair);
       patch.style.opacity = String(repair);
 
-      var messageProgress = smooth((progress - 0.84) / 0.14);
+      var messageProgress = smooth((progress - 0.94) / 0.06);
       message.style.opacity = String(messageProgress);
-      message.style.transform = 'translateY(' + ((1 - messageProgress) * 8).toFixed(2) + 'px)';
+      message.style.transform = 'translateY(' + ((1 - messageProgress) * 12).toFixed(2) + 'px)';
       message.setAttribute('aria-hidden', messageProgress < 0.5 ? 'true' : 'false');
 
-      var stepIndex = Math.min(steps.length - 1, Math.floor(progress * steps.length));
-      if (stepIndex !== lastStep) {
-        steps.forEach(function (step, index) {
-          step.classList.toggle('is-active', index === stepIndex);
-          step.classList.toggle('is-complete', index < stepIndex);
-          if (index === stepIndex) step.setAttribute('aria-current', 'step');
-          else step.removeAttribute('aria-current');
-        });
-        lastStep = stepIndex;
-      }
-
       var captionText;
-      if (progress < 0.2) captionText = 'Road hazard reported';
-      else if (progress < 0.4) captionText = 'Maintenance team arrives';
-      else if (progress < 0.55) captionText = 'Issue assessed and routed';
-      else if (progress < 0.86) captionText = 'Pothole repair in progress';
+      if (progress < 0.2) captionText = 'Meet the CitySense worker';
+      else if (progress < 0.3) captionText = 'Getting ready to jump';
+      else if (progress < 0.45) captionText = 'Jumping into action';
+      else if (progress < 0.55) captionText = 'Landing beside the pothole';
+      else if (progress < 0.65) captionText = 'Preparing the repair';
+      else if (progress < 0.95) captionText = 'Repairing the road';
       else captionText = 'Road repaired';
 
       if (captionText !== lastCaption) {
         caption.textContent = captionText;
-        status.textContent = captionText + '. ' + (
-          progress >= 0.86
-            ? 'From citizen report to real-world resolution.'
-            : 'Scroll to follow the response.'
-        );
+        status.textContent = captionText + (progress >= 0.95
+          ? '. From citizen report to real-world resolution.'
+          : '. Scroll to follow the story.');
         lastCaption = captionText;
       }
     }

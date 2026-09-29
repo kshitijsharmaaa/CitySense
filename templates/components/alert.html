@@ -4,7 +4,7 @@ Usage:
   {% include "components/alert.html" with level="success" title="Report Created" message="Your civic issue report has been submitted." dismissible=True %}
 {% endcomment %}
 
-<div class="cs-alert cs-alert-{{ level|default:'info' }} {% if dismissible %}alert-dismissible fade show{% endif %} role="alert">
+<div class="cs-alert cs-alert-{{ level|default:'info' }} {% if dismissible %}alert-dismissible fade show{% endif %}" role="alert">
   <div class="cs-alert-icon">
     {% if level == "success" %}
       <i class="bi bi-check-circle-fill"></i>

@@ -27,7 +27,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="py-4 py-md-5">
+<section class="cs-page-shell py-4 py-md-5">
   <div class="container">
 
     <!-- Breadcrumb Nav -->
@@ -42,7 +42,7 @@
     <div class="row gy-4">
       <div class="col-lg-8">
         <!-- Main Issue Card -->
-        <div class="card border shadow-sm rounded-3 mb-4">
+        <div class="card mb-4">
           <div class="card-body p-4 p-md-5">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
@@ -54,7 +54,7 @@
               <span class="text-muted-cs small"><i class="bi bi-clock me-1"></i>Date reported: {{ issue.created_at|date:"M d, Y at H:i" }}</span>
             </div>
 
-            <h1 class="h2 fw-bold text-dark mb-3">{{ issue.title }}</h1>
+            <h1 class="h2 cs-page-heading mb-3">{{ issue.title }}</h1>
             <p class="text-secondary fs-6 lead mb-4" style="white-space: pre-line;">{{ issue.description }}</p>
             {% include "components/progress_tracker.html" %}
 
@@ -89,7 +89,7 @@
       <div class="col-lg-4">
         <!-- Associated Incident Intelligence Card -->
         {% if issue.incident %}
-          <div class="card border shadow-sm rounded-3 mb-4">
+          <div class="card mb-4">
             <div class="card-header bg-light fw-bold text-dark d-flex align-items-center justify-content-between">
               <span><i class="bi bi-diagram-3-fill text-primary me-1"></i> Associated Incident</span>
               {% include "components/status_badge.html" with status=issue.incident.status %}
@@ -131,7 +131,7 @@
 
         {% if request.user.is_admin_user %}
           {% if issue.incident %}
-            <section class="card border shadow-sm rounded-3 mt-4" aria-label="Case actions">
+            <section class="card mt-4" aria-label="Case actions">
               <div class="card-body p-3">
                 <h2 class="h6 fw-bold text-dark">Case actions</h2>
                 {% if issue.incident.status == "REPORTED" or issue.incident.status == "VERIFIED" %}
@@ -147,7 +147,7 @@
               </div>
             </section>
           {% endif %}
-          <section class="card border border-danger-subtle shadow-sm rounded-3 mt-4" aria-labelledby="delete-report-title">
+          <section class="card mt-4" aria-labelledby="delete-report-title">
             <div class="card-body p-4">
               <h2 id="delete-report-title" class="h6 fw-bold text-danger">Delete Report</h2>
               <p class="small text-muted-cs">This action permanently removes this report. This cannot be undone.</p>
@@ -161,7 +161,7 @@
 
         <!-- AI Suggestions Metadata Card -->
         {% if issue.ai_summary or issue.ai_category or issue.ai_priority or issue.ai_department or issue.ai_confidence != None %}
-          <div class="card border shadow-sm rounded-3">
+          <div class="card">
             <div class="card-header bg-light fw-bold text-dark d-flex align-items-center gap-2">
               <i class="bi bi-stars text-accent"></i> Smart Assessment
             </div>
