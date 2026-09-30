@@ -27,6 +27,25 @@
     background: #101820;
     object-fit: contain;
     border-radius: var(--cs-radius-md);
+    pointer-events: none;
+  }
+  #camera-captured-preview {
+    display: block;
+    width: 100%;
+    max-height: min(65vh, 560px);
+    object-fit: contain;
+    background: #101820;
+    border-radius: var(--cs-radius-md);
+  }
+  #camera-captured-preview[hidden] { display: none; }
+  #camera-modal { z-index: var(--bs-modal-zindex, 1055); }
+  #camera-modal .modal-content { pointer-events: auto; }
+  #camera-flip-help { flex-basis: 100%; }
+  #camera-modal .modal-footer button { min-height: 44px; }
+  @media (max-width: 575.98px) {
+    #camera-modal .modal-footer { justify-content: flex-start !important; }
+    #camera-modal .modal-footer > .d-flex { width: 100%; }
+    #camera-modal .modal-footer > .d-flex button { flex: 1 1 auto; }
   }
 </style>
 {% endblock %}
@@ -107,6 +126,7 @@
                   <span id="photo-count" class="small text-muted-cs">0 of 5 photos</span>
                 </div>
                 <input type="file" name="images" id="id_images" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
+                <input type="file" id="camera-fallback-input" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" tabindex="-1" aria-hidden="true">
                 <div class="d-flex flex-wrap gap-2 cs-photo-actions">
                   <button type="button" id="take-photo" class="btn btn-cs-primary">
                     <i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Take Photo
@@ -206,13 +226,26 @@
         </div>
         <div class="modal-body">
           <video id="camera-preview" autoplay playsinline muted aria-label="Live camera preview"></video>
+          <img id="camera-captured-preview" alt="Captured photo preview" hidden>
           <div id="camera-error" class="alert alert-warning d-none mt-3 mb-0" role="status" aria-live="polite"></div>
         </div>
-        <div class="modal-footer d-flex justify-content-between">
+        <div class="modal-footer d-flex flex-wrap justify-content-between gap-2">
           <button type="button" class="btn btn-cs-outline" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" id="capture-photo" class="btn btn-cs-primary btn-lg" disabled>
-            <i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Capture Photo
-          </button>
+          <div class="d-flex flex-wrap gap-2 justify-content-end">
+            <button type="button" id="flip-camera" class="btn btn-cs-outline" disabled aria-describedby="camera-flip-help">
+              <i class="bi bi-camera-reels me-1" aria-hidden="true"></i> Flip Camera
+            </button>
+            <button type="button" id="retake-photo" class="btn btn-cs-outline d-none">
+              <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Retake
+            </button>
+            <button type="button" id="use-captured-photo" class="btn btn-cs-primary d-none">
+              <i class="bi bi-check2 me-1" aria-hidden="true"></i> Use Photo
+            </button>
+            <button type="button" id="capture-photo" class="btn btn-cs-primary btn-lg" disabled>
+              <i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Capture Photo
+            </button>
+          </div>
+          <div id="camera-flip-help" class="small text-muted-cs text-end" aria-live="polite">Switch between the rear and front cameras.</div>
         </div>
       </div>
     </div>
@@ -227,6 +260,7 @@
 document.addEventListener("DOMContentLoaded", function() {
   // Image preview handler
   const imageInput = document.getElementById("id_images");
+  const cameraFallbackInput = document.getElementById("camera-fallback-input");
   const previewGrid = document.getElementById("photo-preview-grid");
   const imageError = document.getElementById("image-client-error");
   const reportForm = document.getElementById("issue-report-form");
@@ -244,24 +278,60 @@ document.addEventListener("DOMContentLoaded", function() {
   const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   const maxImageSize = 5 * 1024 * 1024;
   const maxImages = 5;
+  const cameraDebugEnabled = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(window.location.hostname);
+
+  function cameraLog(level, message, details) {
+    if (!cameraDebugEnabled || !console[level]) return;
+    console[level](message, details || "");
+  }
 
   let selectedImageFiles = [];
   const cameraModalElement = document.getElementById("camera-modal");
+  // Bootstrap adds its backdrop to <body>; keep this modal at the same DOM
+  // level so #main-content's z-index stacking context cannot trap it below.
+  if (cameraModalElement && cameraModalElement.parentElement !== document.body) {
+    document.body.appendChild(cameraModalElement);
+  }
   const cameraModal = bootstrap.Modal.getOrCreateInstance(cameraModalElement);
   const cameraVideo = document.getElementById("camera-preview");
+  const capturedPreview = document.getElementById("camera-captured-preview");
   const cameraError = document.getElementById("camera-error");
   const captureButton = document.getElementById("capture-photo");
+  const flipCameraButton = document.getElementById("flip-camera");
+  const flipCameraHelp = document.getElementById("camera-flip-help");
+  const retakeButton = document.getElementById("retake-photo");
+  const useCapturedPhotoButton = document.getElementById("use-captured-photo");
   let cameraStream = null;
+  let cameraFacingMode = "environment";
+  let cameraOpen = false;
+  let cameraReady = false;
+  let activeCameraDeviceId = null;
+  let availableVideoInputs = [];
+  let capturedCameraFile = null;
+  let capturedPreviewUrl = null;
+  let cameraStarting = false;
+  let cameraCapturing = false;
+  let cameraRequestId = 0;
+  let cameraAcquireQueue = Promise.resolve();
   let analysisInProgress = false;
 
   function syncNativeFiles() {
+    let synced = false;
     try {
       const transfer = new DataTransfer();
       selectedImageFiles.forEach(function(file) { transfer.items.add(file); });
       imageInput.files = transfer.files;
+      synced = selectedImageFiles.every(function(file) {
+        return Array.from(imageInput.files || []).some(function(nativeFile) {
+          return nativeFile.name === file.name
+            && nativeFile.size === file.size
+            && nativeFile.lastModified === file.lastModified;
+        });
+      });
     } catch (error) { /* The formdata handler submits the File array as a fallback. */ }
     document.getElementById("photo-count").textContent = selectedImageFiles.length + " of 5 photos";
     analyzeButton.disabled = !selectedImageFiles.length || analysisInProgress;
+    return synced;
   }
 
   function renderPhotoPreviews() {
@@ -312,14 +382,14 @@ document.addEventListener("DOMContentLoaded", function() {
       imageError.classList.remove("d-none");
       imageInput.classList.add("is-invalid");
       imageInput.value = "";
-      return;
+      return false;
     }
     if (selectedImageFiles.length + incoming.length > maxImages) {
       imageError.textContent = "You can upload up to 5 photos. Remove a photo before adding more.";
       imageError.classList.remove("d-none");
       imageInput.classList.add("is-invalid");
       imageInput.value = "";
-      return;
+      return false;
     }
     selectedImageFiles = selectedImageFiles.concat(incoming);
     imageInput.value = "";
@@ -328,59 +398,345 @@ document.addEventListener("DOMContentLoaded", function() {
     triagePreview.classList.add("d-none");
     draftStatus.classList.add("d-none");
     if (selectedImageFiles.length) analyzeSelectedPhoto();
+    return true;
   }
 
   function stopCamera() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(function(track) { track.stop(); });
-      cameraStream = null;
+    cameraRequestId += 1;
+    cameraReady = false;
+    cameraStarting = false;
+    cameraCapturing = false;
+    const streamToStop = cameraStream;
+    cameraStream = null;
+    activeCameraDeviceId = null;
+    if (streamToStop) {
+      streamToStop.getTracks().forEach(function(track) {
+        try { track.stop(); } catch (error) { cameraLog("debug", "[CitySense camera] Track was already stopped."); }
+      });
     }
     cameraVideo.pause();
     cameraVideo.srcObject = null;
     captureButton.disabled = true;
+    flipCameraButton.disabled = true;
+  }
+
+  function clearCapturedPreview() {
+    if (capturedPreviewUrl) {
+      URL.revokeObjectURL(capturedPreviewUrl);
+      capturedPreviewUrl = null;
+    }
+    capturedPreview.removeAttribute("src");
+    capturedPreview.hidden = true;
+    capturedCameraFile = null;
+    retakeButton.classList.add("d-none");
+    useCapturedPhotoButton.classList.add("d-none");
+    captureButton.classList.remove("d-none");
+    flipCameraButton.classList.remove("d-none");
+  }
+
+  function showLiveCamera() {
+    clearCapturedPreview();
+    cameraVideo.classList.remove("d-none");
+    cameraError.classList.add("d-none");
+    cameraError.textContent = "";
+  }
+
+  function isCurrentCamera(stream, requestId) {
+    return Boolean(cameraOpen && stream && cameraStream === stream && cameraRequestId === requestId && stream.active);
+  }
+
+  async function waitForVideoReady(stream, requestId) {
+    if (!cameraVideo || !stream) throw new Error("Camera became unavailable. Please reopen the camera.");
+    function isReady() {
+      return isCurrentCamera(stream, requestId)
+        && cameraVideo.srcObject === stream
+        && cameraVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+        && cameraVideo.videoWidth > 0 && cameraVideo.videoHeight > 0;
+    }
+    if (isReady()) return;
+    await new Promise(function(resolve, reject) {
+      let settled = false;
+      let pollId = null;
+      const timeoutId = setTimeout(function() {
+        finish(new Error("The camera preview is still starting. Please wait a moment and try again."));
+      }, 8000);
+      function cleanup() {
+        clearTimeout(timeoutId);
+        if (pollId !== null) clearInterval(pollId);
+        ["loadedmetadata", "loadeddata", "canplay", "playing", "error"].forEach(function(eventName) {
+          cameraVideo.removeEventListener(eventName, checkReady);
+        });
+      }
+      function finish(error) {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        if (error) reject(error);
+        else resolve();
+      }
+      function checkReady(event) {
+        if (event && event.type === "error" && cameraVideo.srcObject === stream
+            && requestId === cameraRequestId) {
+          finish(new Error("The camera preview could not be loaded."));
+          return;
+        }
+        if (!isCurrentCamera(stream, requestId)) {
+          finish(new Error("Camera became unavailable. Please reopen the camera."));
+          return;
+        }
+        if (isReady()) finish();
+      }
+      ["loadedmetadata", "loadeddata", "canplay", "playing", "error"].forEach(function(eventName) {
+        cameraVideo.addEventListener(eventName, checkReady);
+      });
+      pollId = setInterval(checkReady, 100);
+      checkReady();
+    });
+  }
+
+  function requestCameraStream(preferredDeviceId, excludedDeviceId, requestId) {
+    const request = cameraAcquireQueue.then(function() {
+      return acquireCameraStream(preferredDeviceId, excludedDeviceId, requestId);
+    });
+    cameraAcquireQueue = request.catch(function() { return null; });
+    return request;
+  }
+
+  async function acquireCameraStream(preferredDeviceId, excludedDeviceId, requestId) {
+    const attemptedIds = new Set();
+    let lastError = null;
+    const tryConstraints = async function(constraints, expectedDeviceId) {
+      if (requestId !== cameraRequestId) return null;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (requestId !== cameraRequestId) {
+          stream.getTracks().forEach(function(track) { track.stop(); });
+          return null;
+        }
+        const track = stream.getVideoTracks()[0];
+        const settings = track && track.getSettings ? track.getSettings() : {};
+        const actualId = settings.deviceId || expectedDeviceId || null;
+        if (excludedDeviceId && actualId === excludedDeviceId) {
+          stream.getTracks().forEach(function(activeTrack) { activeTrack.stop(); });
+          lastError = new Error("The browser selected the previous camera again.");
+          return null;
+        }
+        return stream;
+      } catch (error) {
+        lastError = error;
+        return null;
+      }
+    };
+
+    if (preferredDeviceId) {
+      attemptedIds.add(preferredDeviceId);
+      const preferred = await tryConstraints(
+        { video: { deviceId: { exact: preferredDeviceId } }, audio: false },
+        preferredDeviceId
+      );
+      if (preferred) return preferred;
+    }
+    if (requestId !== cameraRequestId) throw new Error("Camera request was cancelled.");
+
+    const facingModeStream = await tryConstraints(
+      { video: { facingMode: { ideal: cameraFacingMode } }, audio: false },
+      null
+    );
+    if (facingModeStream) return facingModeStream;
+    if (requestId !== cameraRequestId) throw new Error("Camera request was cancelled.");
+    if (lastError && (lastError.name === "NotAllowedError" || lastError.name === "SecurityError")) {
+      throw lastError;
+    }
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter(function(device) {
+        return device.kind === "videoinput" && device.deviceId;
+      });
+      for (const device of cameras) {
+        if (requestId !== cameraRequestId) throw new Error("Camera request was cancelled.");
+        if (attemptedIds.has(device.deviceId) || device.deviceId === excludedDeviceId) continue;
+        attemptedIds.add(device.deviceId);
+        const stream = await tryConstraints(
+          { video: { deviceId: { exact: device.deviceId } }, audio: false },
+          device.deviceId
+        );
+        if (stream) return stream;
+      }
+    } catch (error) {
+      if (requestId !== cameraRequestId) throw error;
+      lastError = lastError || error;
+    }
+
+    if (!preferredDeviceId && !excludedDeviceId) {
+      const genericStream = await tryConstraints({ video: true, audio: false }, null);
+      if (genericStream) return genericStream;
+    }
+    if (requestId !== cameraRequestId) throw new Error("Camera request was cancelled.");
+    throw lastError || new Error("Camera access is unavailable.");
+  }
+
+  async function refreshCameraInputs() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      availableVideoInputs = devices.filter(function(device) {
+        return device.kind === "videoinput" && device.deviceId;
+      });
+    } catch (error) {
+      availableVideoInputs = [];
+    }
+
+    if (availableVideoInputs.length === 1) {
+      flipCameraHelp.textContent = "Only one camera is available on this device.";
+      flipCameraButton.disabled = true;
+    } else if (availableVideoInputs.length === 0) {
+      flipCameraHelp.textContent = "Camera switching is unavailable in this browser.";
+      flipCameraButton.disabled = true;
+    } else {
+      flipCameraHelp.textContent = "Switch between the rear and front cameras.";
+      flipCameraButton.disabled = !cameraReady || cameraStarting || cameraCapturing;
+    }
   }
 
   function showCameraError(message) {
     cameraError.textContent = message;
     cameraError.classList.remove("d-none");
     cameraVideo.classList.add("d-none");
-    captureButton.disabled = true;
+    captureButton.dataset.fileFallback = "true";
+    captureButton.innerHTML = '<i class="bi bi-image me-1" aria-hidden="true"></i> Choose a Photo Instead';
+    captureButton.disabled = false;
   }
 
   async function openCamera() {
-    cameraError.textContent = "";
-    cameraError.classList.add("d-none");
-    cameraVideo.classList.remove("d-none");
+    cameraOpen = false;
+    stopCamera();
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      imageError.textContent = "Live camera preview needs HTTPS. Opening your device camera so you can still attach a photo.";
+      imageError.classList.remove("d-none");
+      cameraFallbackInput.click();
+      return;
+    }
+    showLiveCamera();
     cameraModal.show();
+    cameraOpen = true;
+    await startCamera();
+  }
 
-    if (!window.isSecureContext) {
-      showCameraError("Camera access requires a secure page (HTTPS or localhost). You can still choose a photo from files.");
-      return;
-    }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      showCameraError("This browser does not support camera access. Choose a photo from files instead.");
-      return;
-    }
+  async function startCamera(options) {
+    options = options || {};
+    stopCamera();
+    const requestId = cameraRequestId;
+    cameraStarting = true;
+    cameraReady = false;
+    cameraCapturing = false;
+    captureButton.dataset.fileFallback = "false";
+    captureButton.innerHTML = '<i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Capture Photo';
+    captureButton.disabled = true;
+    flipCameraButton.disabled = true;
+    cameraVideo.classList.remove("d-none");
+    cameraError.classList.add("d-none");
 
     try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false
-      });
+      const stream = await requestCameraStream(options.preferredDeviceId, options.switchFromDeviceId, requestId);
+      if (requestId !== cameraRequestId) {
+        stream.getTracks().forEach(function(track) { track.stop(); });
+        return false;
+      }
+      cameraStream = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack && videoTrack.getSettings ? videoTrack.getSettings() : {};
+      const actualDeviceId = settings.deviceId || options.preferredDeviceId || null;
+      if (options.switchFromDeviceId && actualDeviceId === options.switchFromDeviceId) {
+        throw new Error("This browser did not switch to another camera.");
+      }
       cameraVideo.srcObject = cameraStream;
       await cameraVideo.play();
+      if (requestId !== cameraRequestId || !cameraStream) return false;
+      await waitForVideoReady(stream, requestId);
+      if (requestId !== cameraRequestId || cameraStream !== stream) return false;
+      activeCameraDeviceId = actualDeviceId;
+      cameraReady = true;
+      cameraStarting = false;
+      captureButton.dataset.fileFallback = "false";
+      captureButton.innerHTML = '<i class="bi bi-camera-fill me-1" aria-hidden="true"></i> Capture Photo';
       captureButton.disabled = false;
+      await refreshCameraInputs();
+      if (requestId !== cameraRequestId || !cameraStream) return false;
+      return true;
     } catch (error) {
+      if (requestId !== cameraRequestId) return false;
+      stopCamera();
+      cameraStarting = false;
       const message = error && error.name === "NotAllowedError"
         ? "Camera permission was denied. Allow camera access in your browser settings, or choose a photo from files."
         : error && error.name === "NotFoundError"
           ? "No camera was found on this device. Choose a photo from files instead."
+          : error && error.name === "AbortError"
+            ? "The camera request was interrupted. Please try again or choose a photo from files."
+          : error && error.name === "OverconstrainedError"
+            ? "That camera is unavailable. Try flipping cameras or choose a photo from files."
+          : error && error.message === "This browser did not switch to another camera."
+            ? "A different camera is not available right now. You can continue with this camera or choose a photo from files."
           : error && error.name === "NotReadableError"
             ? "The camera is busy or unavailable. Close other apps using it, or choose a photo from files."
-            : "Camera access is unavailable right now. Choose a photo from files instead.";
-      stopCamera();
+            : error && error.message
+              ? error.message + " Choose a photo from files if the camera remains unavailable."
+              : "Camera access is unavailable right now. Choose a photo from files instead.";
       showCameraError(message);
+      return false;
+    } finally {
+      if (requestId === cameraRequestId) cameraStarting = false;
     }
+  }
+
+  async function flipCamera() {
+    if (!cameraStream || !cameraReady || cameraStarting || cameraCapturing || availableVideoInputs.length < 2) return;
+    const previousFacingMode = cameraFacingMode;
+    const previousDeviceId = activeCameraDeviceId;
+    const alternate = availableVideoInputs.find(function(device) {
+      return device.deviceId !== previousDeviceId;
+    });
+    cameraFacingMode = cameraFacingMode === "environment" ? "user" : "environment";
+    stopCamera();
+    showLiveCamera();
+    const opened = await startCamera({
+      preferredDeviceId: alternate && alternate.deviceId,
+      switchFromDeviceId: previousDeviceId
+    });
+    if (opened) return;
+    cameraFacingMode = previousFacingMode;
+    if (previousDeviceId && cameraOpen) {
+      showLiveCamera();
+      const restored = await startCamera({ preferredDeviceId: previousDeviceId });
+      if (restored) showCameraNotice("Could not switch cameras. The previous camera has been restored.");
+    }
+  }
+
+  function showCameraNotice(message) {
+    cameraError.textContent = message;
+    cameraError.classList.remove("d-none");
+    cameraVideo.classList.remove("d-none");
+  }
+
+  function closeCamera() {
+    cameraOpen = false;
+    stopCamera();
+    availableVideoInputs = [];
+    clearCapturedPreview();
+  }
+
+  function retakeCapturedPhoto() {
+    if (capturedCameraFile) {
+      const index = selectedImageFiles.indexOf(capturedCameraFile);
+      if (index !== -1) selectedImageFiles.splice(index, 1);
+      syncNativeFiles();
+      renderPhotoPreviews();
+      triagePreview.classList.add("d-none");
+      draftStatus.classList.add("d-none");
+    }
+    stopCamera();
+    showLiveCamera();
+    startCamera();
   }
 
   function openImagePicker() {
@@ -394,27 +750,113 @@ document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("choose-photo").addEventListener("click", function() {
     openImagePicker();
   });
-  cameraModalElement.addEventListener("hidden.bs.modal", stopCamera);
-  window.addEventListener("pagehide", stopCamera);
+  cameraFallbackInput.addEventListener("change", function() {
+    const selected = this.files && this.files.length;
+    const added = selected ? addSelectedFiles(this.files) : false;
+    this.value = "";
+    if (added && cameraModalElement.classList.contains("show")) cameraModal.hide();
+  });
+  cameraModalElement.addEventListener("hidden.bs.modal", closeCamera);
+  window.addEventListener("pagehide", closeCamera);
+  flipCameraButton.addEventListener("click", flipCamera);
+  retakeButton.addEventListener("click", retakeCapturedPhoto);
+  useCapturedPhotoButton.addEventListener("click", function() { cameraModal.hide(); });
 
-  captureButton.addEventListener("click", function() {
-    if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
-    const maxDimension = 1920;
-    const resize = Math.min(1, maxDimension / Math.max(cameraVideo.videoWidth, cameraVideo.videoHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(cameraVideo.videoWidth * resize);
-    canvas.height = Math.round(cameraVideo.videoHeight * resize);
-    canvas.getContext("2d").drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(function(blob) {
-      if (!blob) {
-        showCameraError("The photo could not be captured. Please try again or choose a photo from files.");
-        return;
+  captureButton.addEventListener("click", async function() {
+    cameraLog("debug", "[CitySense camera] Capture button clicked", {
+      disabled: captureButton.disabled,
+      streamActive: Boolean(cameraStream && cameraStream.active),
+      readyState: cameraVideo.readyState,
+      videoWidth: cameraVideo.videoWidth,
+      videoHeight: cameraVideo.videoHeight,
+    });
+    if (captureButton.dataset.fileFallback === "true" || !cameraStream) {
+      cameraFallbackInput.click();
+      return;
+    }
+    if (cameraStarting || cameraCapturing) {
+      showCameraNotice("The camera is still getting ready. Please try Capture Photo again in a moment.");
+      return;
+    }
+
+    const captureStream = cameraStream;
+    const captureRequestId = cameraRequestId;
+    cameraCapturing = true;
+    captureButton.disabled = true;
+    flipCameraButton.disabled = true;
+    try {
+      if (cameraVideo.videoWidth <= 0 || cameraVideo.videoHeight <= 0) {
+        showCameraNotice("The live preview is not ready yet. Please wait a moment and try again.");
+        await waitForVideoReady(captureStream, captureRequestId);
       }
-      const capturedFile = new File([blob], "captured-photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
-      addSelectedFiles([capturedFile]);
+      if (!isCurrentCamera(captureStream, captureRequestId)) {
+        throw new Error("Camera became unavailable. Please reopen it and try again.");
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = cameraVideo.videoWidth;
+      canvas.height = cameraVideo.videoHeight;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("This browser cannot capture the camera frame.");
+      context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(function(resolve, reject) {
+        if (typeof canvas.toBlob !== "function") {
+          reject(new Error("This browser cannot create a photo from the camera frame."));
+          return;
+        }
+        let settled = false;
+        const timeoutId = setTimeout(function() {
+          settled = true;
+          reject(new Error("Photo capture timed out. Please try again."));
+        }, 15000);
+        canvas.toBlob(function(result) {
+          if (settled) return;
+          clearTimeout(timeoutId);
+          settled = true;
+          if (result && result.size > 0) resolve(result);
+          else reject(new Error("The browser could not create the captured photo. Please try again."));
+        }, "image/jpeg", 0.88);
+      });
+      if (captureRequestId !== cameraRequestId || captureStream !== cameraStream) return;
+
+      const capturedAt = Date.now();
+      const capturedFile = new File([blob], "captured-photo-" + capturedAt + ".jpg", {
+        type: "image/jpeg",
+        lastModified: capturedAt,
+      });
+      if (!addSelectedFiles([capturedFile])) return;
+      capturedCameraFile = capturedFile;
+      capturedPreviewUrl = URL.createObjectURL(capturedFile);
+      capturedPreview.src = capturedPreviewUrl;
+      capturedPreview.hidden = false;
+      cameraVideo.classList.add("d-none");
+      cameraError.classList.add("d-none");
       stopCamera();
-      cameraModal.hide();
-    }, "image/jpeg", 0.88);
+      captureButton.classList.add("d-none");
+      flipCameraButton.classList.add("d-none");
+      retakeButton.classList.remove("d-none");
+      useCapturedPhotoButton.classList.remove("d-none");
+      cameraLog("debug", "[CitySense camera] Photo attached", {
+        fileSize: capturedFile.size,
+        selectedPhotoCount: selectedImageFiles.length,
+      });
+    } catch (error) {
+      cameraLog("warn", "[CitySense camera] Capture failed", { message: error && error.message });
+      const sameCameraSession = cameraOpen
+        && cameraStream === captureStream
+        && cameraRequestId === captureRequestId;
+      if (sameCameraSession) {
+        showCameraNotice((error && error.message ? error.message : "Unable to capture this frame.")
+          + " Please try again.");
+      }
+    } finally {
+      if (captureRequestId === cameraRequestId && captureStream === cameraStream) {
+        cameraCapturing = false;
+        captureButton.disabled = !cameraReady;
+        refreshCameraInputs();
+      }
+    }
   });
 
   // Keep both camera-captured and picker-selected files in fetch and form submit.
@@ -425,7 +867,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
   if (imageInput) {
     imageInput.addEventListener("change", function() {
-      addSelectedFiles(this.files);
+      const added = this.files && this.files.length ? addSelectedFiles(this.files) : false;
+      if (added && cameraModalElement.classList.contains("show")) cameraModal.hide();
     });
   }
 

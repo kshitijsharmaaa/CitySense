@@ -18,6 +18,34 @@
   --cs-warning: #b45309;
   --cs-danger: #b91c1c;
 
+  /* Landing page palette: defaults match the existing light design. */
+  --cs-landing-process-bg: #f7faff;
+  --cs-landing-process-border: rgba(148, 163, 184, .2);
+  --cs-landing-eyebrow: #53687f;
+  --cs-landing-heading: #101d31;
+  --cs-landing-copy: #5b6d82;
+  --cs-landing-number: #94a9bf;
+  --cs-landing-marker-bg: #f7faff;
+  --cs-landing-marker-border: #d4dfeb;
+  --cs-landing-marker-color: #53728f;
+  --cs-landing-current-marker-bg: #e7f5fd;
+  --cs-landing-step-heading: #17243a;
+  --cs-landing-step-copy: #68798c;
+  --cs-landing-categories-bg: radial-gradient(ellipse at 15% 0%, rgba(224, 242, 254, .72), transparent 38%), linear-gradient(180deg, #fff 0%, #f7faff 100%);
+  --cs-landing-tile-bg: linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(243, 248, 253, .8));
+  --cs-landing-tile-hover-bg: #fff;
+  --cs-landing-tile-border: rgba(203, 213, 225, .64);
+  --cs-landing-category-heading: #182840;
+  --cs-landing-category-copy: #66788c;
+  --cs-landing-category-arrow-bg: rgba(255, 255, 255, .74);
+  --cs-landing-category-arrow: #315d80;
+  --cs-landing-category-footnote: #708196;
+  --cs-landing-story-bg: #eaf5ff;
+  --cs-landing-road-bg: #eaf5ff;
+  --cs-landing-road-backdrop: radial-gradient(ellipse at 70% 18%, rgba(255, 255, 255, .9), transparent 34%), linear-gradient(180deg, #bfe0f3 0%, #e8f5fa 52%, #b7c8ad 100%);
+  --cs-landing-hero-overlay: linear-gradient(105deg, rgba(255, 255, 255, .91) 0%, rgba(255, 255, 255, .82) 46%, rgba(255, 255, 255, .24) 100%);
+  --cs-landing-hero-overlay-mobile: linear-gradient(180deg, rgba(255, 255, 255, .97) 0%, rgba(255, 255, 255, .86) 52%, rgba(255, 255, 255, .42) 100%);
+
   /* Neutral Spectrum */
   --cs-bg-main: #f8fafc;       /* Clean Off-White Page Background */
   --cs-bg-card: #ffffff;       /* Pure White Card Surfaces */
@@ -807,6 +835,32 @@ html[data-theme="dark"] {
   --cs-priority-medium: #85b3ff;
   --cs-priority-high: #ffc078;
   --cs-priority-critical: #ff9297;
+  --cs-landing-process-bg: #0c1522;
+  --cs-landing-process-border: rgba(116, 145, 176, .2);
+  --cs-landing-eyebrow: #a6b7c9;
+  --cs-landing-heading: #edf4fc;
+  --cs-landing-copy: #b3c3d4;
+  --cs-landing-number: #849bb3;
+  --cs-landing-marker-bg: #142235;
+  --cs-landing-marker-border: #3a536d;
+  --cs-landing-marker-color: #b6c9dd;
+  --cs-landing-current-marker-bg: #173b54;
+  --cs-landing-step-heading: #edf4fc;
+  --cs-landing-step-copy: #b3c3d4;
+  --cs-landing-categories-bg: radial-gradient(ellipse at 15% 0%, rgba(37, 88, 128, .22), transparent 38%), linear-gradient(180deg, #0c1522 0%, #111e2e 100%);
+  --cs-landing-tile-bg: linear-gradient(135deg, rgba(20, 34, 53, .96), rgba(26, 43, 64, .92));
+  --cs-landing-tile-hover-bg: var(--cs-bg-card);
+  --cs-landing-tile-border: rgba(116, 145, 176, .28);
+  --cs-landing-category-heading: #edf4fc;
+  --cs-landing-category-copy: #b3c3d4;
+  --cs-landing-category-arrow-bg: rgba(26, 43, 64, .88);
+  --cs-landing-category-arrow: #a9c8e6;
+  --cs-landing-category-footnote: #a6b7c9;
+  --cs-landing-story-bg: #0c1522;
+  --cs-landing-road-bg: #101d2d;
+  --cs-landing-road-backdrop: radial-gradient(ellipse at 70% 18%, rgba(101, 146, 183, .22), transparent 34%), linear-gradient(180deg, #14263a 0%, #172b3d 52%, #263a39 100%);
+  --cs-landing-hero-overlay: linear-gradient(105deg, rgba(12, 21, 34, .96) 0%, rgba(12, 21, 34, .86) 46%, rgba(12, 21, 34, .28) 100%);
+  --cs-landing-hero-overlay-mobile: linear-gradient(180deg, rgba(12, 21, 34, .97) 0%, rgba(12, 21, 34, .88) 52%, rgba(12, 21, 34, .46) 100%);
   --cs-shadow-sm: 0 2px 8px rgba(0, 0, 0, .18);
   --cs-shadow-md: 0 8px 24px rgba(0, 0, 0, .24);
   --cs-shadow-lg: 0 18px 44px rgba(0, 0, 0, .3);
@@ -960,6 +1014,11 @@ html[data-theme="dark"] .cs-profile-action { color: var(--cs-text-body); }
 html[data-theme="dark"] .cs-navbar-drawer .offcanvas-header { background: #152438; }
 html[data-theme="dark"] .cs-theme-toggle { white-space: nowrap; }
 html[data-theme="dark"] .btn-close { filter: invert(1) grayscale(100%) brightness(180%); }
+html[data-theme="dark"] .cs-category-index { color: #a2b8cf; }
+html[data-theme="dark"] .cs-category-index span { color: #91a7bf; }
+html[data-theme="dark"] .cs-category-icon { background: rgba(26, 43, 64, .82); border-color: rgba(103, 163, 211, .22); }
+html[data-theme="dark"] .cs-category-watermark { color: rgba(126, 175, 214, .12); }
+html[data-theme="dark"] .cs-category-tile:hover { background: var(--cs-landing-tile-hover-bg); }
 
 /* Leaflet controls and popups adapt; the configured map tiles stay untouched. */
 html[data-theme="dark"] .leaflet-bar a,
@@ -1646,8 +1705,8 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-process-section {
   padding: clamp(4rem, 7vw, 7rem) 0 clamp(4.5rem, 7vw, 7rem);
-  background: #f7faff;
-  border-bottom: 1px solid rgba(148, 163, 184, .2);
+  background: var(--cs-landing-process-bg);
+  border-bottom: 1px solid var(--cs-landing-process-border);
 }
 
 .cs-process-intro,
@@ -1664,7 +1723,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   align-items: center;
   gap: .7rem;
   margin-bottom: 1.15rem;
-  color: #53687f;
+  color: var(--cs-landing-eyebrow);
   font-size: .76rem;
   font-weight: 800;
   letter-spacing: .13em;
@@ -1682,7 +1741,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-editorial-heading {
   margin: 0;
-  color: #101d31;
+  color: var(--cs-landing-heading);
   font-size: clamp(2.8rem, 6.3vw, 6.1rem);
   font-weight: 800;
   letter-spacing: -.065em;
@@ -1697,7 +1756,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 .cs-category-intro > p {
   max-width: 36rem;
   margin: 0 0 .4rem;
-  color: #5b6d82;
+  color: var(--cs-landing-copy);
   font-size: clamp(1rem, 1.35vw, 1.18rem);
   line-height: 1.7;
 }
@@ -1743,7 +1802,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-process-number {
   display: block;
-  color: #94a9bf;
+  color: var(--cs-landing-number);
   font-family: "Manrope", sans-serif;
   font-size: var(--cs-process-number-size);
   font-weight: 800;
@@ -1759,10 +1818,10 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   height: 42px;
   margin-top: 1.35rem;
   place-items: center;
-  border: 1px solid #d4dfeb;
+  border: 1px solid var(--cs-landing-marker-border);
   border-radius: 50%;
-  background: #f7faff;
-  color: #53728f;
+  background: var(--cs-landing-marker-bg);
+  color: var(--cs-landing-marker-color);
   font-size: 1rem;
 }
 
@@ -1773,7 +1832,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-process-step.is-current .cs-process-marker {
   border-color: rgba(2, 132, 199, .38);
-  background: #e7f5fd;
+  background: var(--cs-landing-current-marker-bg);
   color: var(--cs-accent);
 }
 
@@ -1784,7 +1843,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-process-copy h3 {
   margin: 0 0 .65rem;
-  color: #17243a;
+  color: var(--cs-landing-step-heading);
   font-family: "Manrope", sans-serif;
   font-size: clamp(1.05rem, 1.5vw, 1.28rem);
   font-weight: 800;
@@ -1795,7 +1854,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 .cs-process-copy p {
   max-width: 19rem;
   margin: 0;
-  color: #68798c;
+  color: var(--cs-landing-step-copy);
   font-size: .94rem;
   line-height: 1.65;
 }
@@ -1817,9 +1876,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-category-section {
   padding: clamp(4.5rem, 7.5vw, 7.5rem) 0 clamp(4.5rem, 7vw, 7rem);
-  background:
-    radial-gradient(ellipse at 15% 0%, rgba(224, 242, 254, .72), transparent 38%),
-    linear-gradient(180deg, #fff 0%, #f7faff 100%);
+  background: var(--cs-landing-categories-bg);
 }
 
 .cs-category-context {
@@ -1861,9 +1918,9 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   min-height: 15rem;
   overflow: hidden;
   padding: clamp(1.35rem, 2.4vw, 2.1rem);
-  border: 1px solid rgba(203, 213, 225, .64);
+  border: 1px solid var(--cs-landing-tile-border);
   border-radius: 1.2rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(243, 248, 253, .8));
+  background: var(--cs-landing-tile-bg);
   color: inherit;
   text-decoration: none;
   transition: transform .28s ease, border-color .28s ease, box-shadow .28s ease, background-color .28s ease;
@@ -1924,7 +1981,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 
 .cs-category-copy h3 {
   margin: 0 0 .45rem;
-  color: #182840;
+  color: var(--cs-landing-category-heading);
   font-size: clamp(1.25rem, 2.1vw, 1.8rem);
   font-weight: 800;
   letter-spacing: -.045em;
@@ -1934,7 +1991,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 .cs-category-copy p {
   max-width: 27rem;
   margin: 0;
-  color: #66788c;
+  color: var(--cs-landing-category-copy);
   font-size: .93rem;
   line-height: 1.55;
 }
@@ -1961,8 +2018,8 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   place-items: center;
   border: 1px solid rgba(148, 163, 184, .44);
   border-radius: 50%;
-  background: rgba(255, 255, 255, .74);
-  color: #315d80;
+  background: var(--cs-landing-category-arrow-bg);
+  color: var(--cs-landing-category-arrow);
   transition: transform .28s ease, background-color .28s ease, color .28s ease;
 }
 
@@ -1976,7 +2033,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   align-items: center;
   gap: .65rem;
   margin: 1.35rem 0 0;
-  color: #708196;
+  color: var(--cs-landing-category-footnote);
   font-size: .85rem;
 }
 
@@ -1991,7 +2048,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   .cs-category-tile:hover {
     transform: translateY(-4px);
     border-color: rgba(2, 132, 199, .28);
-    background: #fff;
+    background: var(--cs-landing-tile-hover-bg, #fff);
     box-shadow: 0 18px 38px rgba(28, 63, 99, .1);
   }
 
@@ -2227,7 +2284,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   padding: 0;
   overflow: clip;
   border: 0;
-  background: #eaf5ff;
+  background: var(--cs-landing-story-bg);
 }
 
 .cs-continuous-story .cs-story-track {
@@ -2266,16 +2323,14 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 .cs-story-road-layer {
   z-index: 0;
   overflow: hidden;
-  background: #eaf5ff;
+  background: var(--cs-landing-road-bg);
   opacity: 0;
 }
 
 .cs-story-road-backdrop {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 70% 18%, rgba(255, 255, 255, .9), transparent 34%),
-    linear-gradient(180deg, #bfe0f3 0%, #e8f5fa 52%, #b7c8ad 100%);
+  background: var(--cs-landing-road-backdrop);
 }
 
 .cs-story-road-art {
@@ -2295,7 +2350,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
 .cs-story-hero-layer {
   z-index: 4;
   isolation: isolate;
-  background-color: #bfe8f5;
+  background-color: var(--cs-landing-story-bg);
   background-image: url("../images/citysense-hero-cityscape.jpg");
   background-repeat: no-repeat;
   background-position: center 54%;
@@ -2322,7 +2377,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   position: absolute;
   z-index: 1;
   inset: 0;
-  background: linear-gradient(105deg, rgba(255, 255, 255, .91) 0%, rgba(255, 255, 255, .82) 46%, rgba(255, 255, 255, .24) 100%);
+  background: var(--cs-landing-hero-overlay);
   content: "";
   pointer-events: none;
 }
@@ -2513,7 +2568,7 @@ html[data-theme="dark"] .cs-city-personal-reports { fill: #67c9f1; stroke: rgba(
   }
 
   .cs-story-hero-layer::before {
-    background: linear-gradient(180deg, rgba(255, 255, 255, .97) 0%, rgba(255, 255, 255, .86) 52%, rgba(255, 255, 255, .42) 100%);
+    background: var(--cs-landing-hero-overlay-mobile);
   }
 
   .cs-story-hero-layer {

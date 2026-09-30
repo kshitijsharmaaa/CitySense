@@ -2,6 +2,7 @@
 
 import json
 import math
+import re
 from collections.abc import Mapping
 
 from .prompts import ALLOWED_CATEGORIES, ALLOWED_DEPARTMENTS, ALLOWED_PRIORITIES
@@ -17,6 +18,10 @@ REPORT_DRAFT_KEYS = {"generated_title", "generated_description"}
 
 def _parse_candidate(candidate):
     if isinstance(candidate, str):
+        candidate = candidate.strip()
+        fenced_json = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.IGNORECASE | re.DOTALL)
+        if fenced_json:
+            candidate = fenced_json.group(1)
         try:
             candidate = json.loads(candidate)
         except (json.JSONDecodeError, TypeError) as exc:

@@ -73,6 +73,12 @@ class TriageValidationTests(TestCase):
         self.assertEqual(validated["generated_title"], VALID_REPORT_RESULT["generated_title"])
         self.assertEqual(validated["generated_description"], VALID_REPORT_RESULT["generated_description"])
 
+    def test_valid_report_draft_accepts_json_code_fence_and_surrounding_whitespace(self):
+        response = "  ```json\n" + json.dumps(VALID_REPORT_RESULT) + "\n```  "
+        validated = validate_report_draft(response)
+        self.assertEqual(validated["generated_title"], VALID_REPORT_RESULT["generated_title"])
+        self.assertEqual(validated["generated_description"], VALID_REPORT_RESULT["generated_description"])
+
     def test_invalid_generated_report_fields_are_rejected(self):
         for field, value in (("generated_title", " "), ("generated_description", "x" * 2001)):
             with self.subTest(field=field):

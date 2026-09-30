@@ -43,10 +43,11 @@ def triage_issue(*, title, description, image=None, images=None, generate_report
             if report_text:
                 safe_detail = safe_detail.replace(report_text, "[report text redacted]")
         safe_detail = safe_detail[:400]
+        provider_status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
         logger.warning(
-            "AI triage failed; using deterministic fallback "
-            "(exception=%s, detail=%s).",
-            type(exc).__name__, safe_detail,
+            "Gemini request failed; using deterministic fallback "
+            "(provider=Gemini, model=%s, http_status=%s, exception=%s, detail=%s).",
+            settings.AI_MODEL, provider_status, type(exc).__name__, safe_detail,
         )
         if generate_report:
             if getattr(exc, "code", None) == 429:
